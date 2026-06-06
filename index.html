@@ -27,7 +27,7 @@ body { font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',s
 .stat-num { font-size:16px; font-weight:700; color:#1a1a1a; }
 .stat-unit { font-size:10px; color:#bbb; }
 
-/* タブ（5つ） */
+/* タブ */
 .tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-bottom:10px; }
 .tab-btn { padding:9px 2px; font-size:11px; font-weight:600; background:#f5f5f3; color:#888; border:none; border-radius:10px; cursor:pointer; transition:background .15s; }
 .tab-btn.active { background:#1a1a1a; color:#fff; }
@@ -41,7 +41,7 @@ body { font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',s
 .month-nav:active { background:#f0f0f0; }
 .month-label { font-size:15px; font-weight:700; }
 
-/* 報酬サマリー（月別・報酬タブ共通） */
+/* 報酬サマリー */
 .reward-summary { background:#fff; border-radius:14px; border:1px solid #e8e8e6; margin-bottom:10px; overflow:hidden; display:none; }
 .reward-summary.show { display:block; }
 .reward-summary-hd { background:#27ae60; color:#fff; padding:10px 16px; font-size:13px; font-weight:700; }
@@ -85,7 +85,6 @@ body { font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',s
 .reward-card-left .rc-date { font-size:12px; color:#aaa; margin-top:2px; }
 .reward-card-left .rc-memo { font-size:12px; color:#888; margin-top:3px; }
 .rc-amount { font-size:20px; font-weight:700; color:#27ae60; white-space:nowrap; }
-.rc-status-unearned { font-size:11px; color:#aaa; margin-top:4px; text-align:right; }
 .reward-actions { display:flex; gap:8px; margin-top:10px; }
 
 /* 前払い請求カード */
@@ -131,6 +130,15 @@ textarea.form-input { resize:none; line-height:1.6; }
 .weekday-btns { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .wd-btn { padding:12px 4px; font-size:14px; font-weight:600; border-radius:10px; cursor:pointer; border:1px solid #ddd; background:#f5f5f3; color:#888; transition:all .15s; text-align:center; }
 .wd-btn.active { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+
+/* 締め日・支払日設定 */
+.cycle-setting-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.cycle-setting-row label { font-size:13px; color:#555; white-space:nowrap; min-width:90px; }
+.cycle-input-wrap { display:flex; align-items:center; gap:6px; }
+.cycle-input { width:64px; padding:10px 10px; font-size:15px; font-weight:600; border:1px solid #ddd; border-radius:10px; outline:none; background:#fafafa; color:#1a1a1a; text-align:center; transition:border-color .15s; }
+.cycle-input:focus { border-color:#1a1a1a; background:#fff; }
+.cycle-unit { font-size:13px; color:#888; }
+.cycle-preview { background:#f0f9ff; border-radius:10px; padding:10px 14px; margin-top:4px; font-size:12px; color:#2980b9; line-height:1.8; }
 
 /* 共通ボタン */
 .btn-primary { width:100%; padding:14px; font-size:15px; font-weight:600; background:#1a1a1a; color:#fff; border:none; border-radius:12px; cursor:pointer; letter-spacing:.03em; margin-bottom:10px; }
@@ -209,7 +217,6 @@ textarea.form-input { resize:none; line-height:1.6; }
 .photo-add-icon { font-size:22px; }
 .photo-add-text { font-size:10px; color:#aaa; }
 .photo-count { font-size:11px; color:#888; margin-bottom:6px; }
-/* 訪問カード内の写真グリッド */
 .card-photo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-bottom:8px; }
 .card-photo-grid img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; cursor:pointer; }
 
@@ -238,7 +245,6 @@ textarea.form-input { resize:none; line-height:1.6; }
       Android: メニュー → 「ホーム画面に追加」
     </div>
 
-    <!-- 検索バー -->
     <div id="search-bar-area" style="display:none;">
       <div class="search-bar-wrap">
         <input type="search" id="search-input" class="search-input" placeholder="お客様名・ID・住所・メモで検索..." oninput="onSearchInput()" />
@@ -283,14 +289,12 @@ textarea.form-input { resize:none; line-height:1.6; }
       <button class="tab-btn reward-tab" id="tab-reward" onclick="switchTab('reward')">💰報酬</button>
     </div>
 
-    <!-- 月選択ナビ -->
     <div class="month-selector" id="month-selector">
       <button class="month-nav" onclick="changeMonth(-1)">‹</button>
       <span class="month-label" id="month-label"></span>
       <button class="month-nav" onclick="changeMonth(1)">›</button>
     </div>
 
-    <!-- 報酬サマリー（報酬タブのみ） -->
     <div class="reward-summary" id="reward-summary">
       <div class="reward-summary-hd">💰 報酬サマリー <span id="rs-cycle-label" style="font-size:11px;font-weight:400;opacity:.85;margin-left:6px;"></span></div>
       <div class="rs-rows">
@@ -323,11 +327,9 @@ textarea.form-input { resize:none; line-height:1.6; }
 
     <div id="visit-list"></div>
 
-    <!-- 訪問タブ用ボタン -->
     <div id="main-btn-area">
       <button class="btn-green" onclick="openForm()">＋ 新規登録</button>
     </div>
-    <!-- 報酬タブ用ボタン -->
     <div id="reward-btn-area" style="display:none;">
       <button class="btn-green" onclick="openRewardForm()">＋ 報酬を記録</button>
       <button class="btn-orange" onclick="openAdvanceForm()">💸 前払い請求を記録</button>
@@ -454,6 +456,29 @@ textarea.form-input { resize:none; line-height:1.6; }
     <span style="width:48px;"></span>
   </div>
   <div class="wrap">
+
+    <!-- 締め日・支払日設定（新規追加） -->
+    <div class="card">
+      <p class="card-label">報酬サイクル設定</p>
+      <p style="font-size:12px;color:#aaa;margin-bottom:12px;">報酬タブのサマリーに使用する締め日と支払日を設定します</p>
+      <div class="cycle-setting-row">
+        <label>締め日</label>
+        <div class="cycle-input-wrap">
+          <input type="number" id="s-closing-day" class="cycle-input" min="1" max="31" inputmode="numeric" oninput="updateCyclePreview()" />
+          <span class="cycle-unit">日</span>
+        </div>
+      </div>
+      <div class="cycle-setting-row">
+        <label>支払日</label>
+        <div class="cycle-input-wrap">
+          <input type="number" id="s-pay-day" class="cycle-input" min="1" max="31" inputmode="numeric" oninput="updateCyclePreview()" />
+          <span class="cycle-unit">日</span>
+        </div>
+      </div>
+      <div class="cycle-preview" id="cycle-preview"></div>
+      <button class="btn-primary" style="margin-top:12px;margin-bottom:0;" onclick="saveCycleSettings()">保存する</button>
+    </div>
+
     <div class="card">
       <p class="card-label">週の起算日</p>
       <p style="font-size:12px;color:#aaa;margin-bottom:10px;">「今週」タブの集計開始曜日を設定します</p>
@@ -480,7 +505,8 @@ const KEY_SETTINGS = 'dorakuru_settings';
 let visits   = [];
 let advances = [];
 let rewards  = [];
-let settings = { weekStart: 1 }; // 0=日,1=月,6=土
+// ★ closingDay・payDay を settings に追加（デフォルト15日締め・27日払い）
+let settings = { weekStart: 1, closingDay: 15, payDay: 27 };
 
 let editingVisitId   = null;
 let searchQuery = '';
@@ -489,8 +515,8 @@ let editingAdvanceId = null;
 let editingRewardId  = null;
 let currentTab    = 'today';
 let selectedStatus       = 0;
-let selectedRewardStatus = 1; // 報酬はデフォルト確定済
-let currentPhotos = []; // 最大5枚のBase64配列
+let selectedRewardStatus = 1;
+let currentPhotos = [];
 let currentMonth = (() => {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
@@ -501,7 +527,10 @@ function loadData() {
   try { visits   = JSON.parse(localStorage.getItem(KEY_VISITS)   || '[]'); } catch(e) { visits=[]; }
   try { advances = JSON.parse(localStorage.getItem(KEY_ADVANCES) || '[]'); } catch(e) { advances=[]; }
   try { rewards  = JSON.parse(localStorage.getItem(KEY_REWARDS)  || '[]'); } catch(e) { rewards=[]; }
-  try { settings = { weekStart:1, ...JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}') }; } catch(e) {}
+  try {
+    // ★ closingDay・payDay もマージ（既存データとの後方互換）
+    settings = { weekStart:1, closingDay:15, payDay:27, ...JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}') };
+  } catch(e) {}
 }
 function saveData() {
   try { localStorage.setItem(KEY_VISITS,   JSON.stringify(visits));   } catch(e) {}
@@ -516,7 +545,7 @@ const MAX_PHOTOS = 5;
 document.getElementById('f-photo').addEventListener('change', function(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
-  this.value = ''; // 同じ写真も再選択できるようリセット
+  this.value = '';
   if (currentPhotos.length >= MAX_PHOTOS) {
     alert(`写真は最大${MAX_PHOTOS}枚までです`); return;
   }
@@ -554,7 +583,6 @@ function renderPhotoGrid() {
       <img src="${src}" alt="写真${i+1}" onclick="viewPhoto('${i}')" />
       <button class="photo-thumb-del" onclick="removePhoto(${i})">✕</button>
     </div>`).join('');
-  // 追加スロット
   if (currentPhotos.length < MAX_PHOTOS) {
     html += `<div class="photo-add-slot" onclick="document.getElementById('f-photo').click()">
       <span class="photo-add-icon">📷</span>
@@ -570,7 +598,6 @@ function removePhoto(idx) {
 }
 
 function viewPhoto(idx) {
-  // 拡大表示
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;';
   overlay.onclick = () => document.body.removeChild(overlay);
@@ -587,7 +614,6 @@ function resetPhotoUI() {
 }
 
 function setPhotoPreviews(photos) {
-  // photos: 配列 or 後方互換で文字列（1枚）
   if (!photos) { resetPhotoUI(); return; }
   currentPhotos = Array.isArray(photos) ? [...photos] : [photos];
   renderPhotoGrid();
@@ -640,27 +666,8 @@ function updateMonthLabel() {
   }
 }
 
-// ===== 週バー更新 =====
-function updateWeekBar() {
-  const wr = getWeekRange();
-  const fmt = s => { const [y,mo,d]=s.split('-'); return `${parseInt(mo)}/${parseInt(d)}`; };
-  document.getElementById('week-range-text').textContent = `${fmt(wr.start)} 〜 ${fmt(wr.end)}`;
-  const dayNames = ['日','月','火','水','木','金','土'];
-  document.getElementById('week-start-tag').textContent = `${dayNames[settings.weekStart]}曜起算`;
-}
-
 // ===== 日付ユーティリティ =====
 function toDateStr(dt) { return dt ? dt.split('T')[0] : ''; }
-function getWeekRange() {
-  const now = new Date(), day = now.getDay();
-  const ws = settings.weekStart;
-  // 今日からws曜日まで何日戻るか
-  const diff = ((day - ws) + 7) % 7;
-  const start = new Date(now); start.setDate(now.getDate() - diff);
-  const end   = new Date(start); end.setDate(start.getDate() + 6);
-  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  return { start: fmt(start), end: fmt(end) };
-}
 function todayStr() {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
@@ -685,33 +692,76 @@ function fmtYen(n) {
   if (n==null||isNaN(n)) return '¥0';
   return '¥'+Number(n).toLocaleString('ja-JP');
 }
+function fmtDate(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${parseInt(y)}/${parseInt(m)}/${parseInt(day)}`;
+}
 
-
-// ===== 締め日サイクル計算（15日締め・27日払い）=====
-// cycleMonth: 'YYYY-MM' 形式の支払月
-// 例）'2026-06' → 集計期間: 2026-05-16 〜 2026-06-15、支払日: 2026-06-27
+// ===== ★ 締め日サイクル計算（settings.closingDay / settings.payDay を使用）=====
+// cycleMonth: 'YYYY-MM' 形式（支払月）
+// 例）closingDay=15, payDay=27, cycleMonth='2026-06'
+//   → 集計: 2026-05-16 〜 2026-06-15、支払日: 2026-06-27
 function getCycleRange(cycleMonth) {
   const [y, m] = cycleMonth.split('-').map(Number);
-  // 前月16日〜当月15日
-  const prevDate = new Date(y, m-2, 16); // 前月16日
-  const endDate  = new Date(y, m-1, 15); // 当月15日
-  const payday   = new Date(y, m-1, 27); // 当月27日
+  const cd = settings.closingDay; // 締め日
+  const pd = settings.payDay;     // 支払日
+
+  // 集計開始日 = 前月の（締め日+1）日
+  const startDate = new Date(y, m-2, cd + 1);
+  // 集計終了日 = 当月の締め日
+  const endDate   = new Date(y, m-1, cd);
+  // 支払予定日 = 当月の支払日
+  const payday    = new Date(y, m-1, pd);
+
   const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const fmtDisp = d => `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
   return {
-    start:    fmt(prevDate),
-    end:      fmt(endDate),
-    payday:   fmt(payday),
-    startDisp: fmtDisp(prevDate),
-    endDisp:   fmtDisp(endDate),
+    start:      fmt(startDate),
+    end:        fmt(endDate),
+    payday:     fmt(payday),
+    startDisp:  fmtDisp(startDate),
+    endDisp:    fmtDisp(endDate),
     paydayDisp: fmtDisp(payday),
   };
 }
+
+// ===== ★ 設定画面：サイクルプレビュー更新 =====
+function updateCyclePreview() {
+  const cd = parseInt(document.getElementById('s-closing-day').value) || settings.closingDay;
+  const pd = parseInt(document.getElementById('s-pay-day').value)     || settings.payDay;
+  const now = new Date();
+  const cm  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  // 仮の settings で計算
+  const orig = { ...settings };
+  settings.closingDay = cd;
+  settings.payDay     = pd;
+  const cyc = getCycleRange(cm);
+  settings = orig; // 元に戻す
+
+  document.getElementById('cycle-preview').textContent =
+    `今月のサイクル例\n集計期間：${cyc.startDisp} 〜 ${cyc.endDisp}\n支払予定日：${cyc.paydayDisp}`;
+  document.getElementById('cycle-preview').style.whiteSpace = 'pre-line';
+}
+
+// ===== ★ 設定画面：サイクル設定を保存 =====
+function saveCycleSettings() {
+  const cd = parseInt(document.getElementById('s-closing-day').value);
+  const pd = parseInt(document.getElementById('s-pay-day').value);
+  if (!cd || cd < 1 || cd > 31) { alert('締め日を1〜31の数字で入力してください'); return; }
+  if (!pd || pd < 1 || pd > 31) { alert('支払日を1〜31の数字で入力してください'); return; }
+  settings.closingDay = cd;
+  settings.payDay     = pd;
+  saveData();
+  updateCyclePreview();
+  alert(`保存しました。\n締め日：毎月${cd}日　支払日：毎月${pd}日`);
+}
+
 // ===== 統計 =====
 function updateStats() {
   const today=todayStr(), tMonth=thisMonthStr();
   const tom  = offsetDay(1), da = offsetDay(2);
-  // 統計は未訪問含む全件（予定件数として表示）
   const vToday    = visits.filter(v=>toDateStr(v.datetime)===today);
   const vTomorrow = visits.filter(v=>toDateStr(v.datetime)===tom);
   const vDayafter = visits.filter(v=>toDateStr(v.datetime)===da);
@@ -725,13 +775,11 @@ function updateStats() {
 
   if (currentTab==='reward') {
     const cyc = getCycleRange(currentMonth);
-    // 集計期間内（前月16日〜当月15日）のデータを対象
     const inCycleR = rewards.filter(r=>r.date>=cyc.start && r.date<=cyc.end);
     const inCycleV = visits.filter(v=>{
       const d=toDateStr(v.datetime);
       return d>=cyc.start && d<=cyc.end && v.reward!=null;
     });
-    // 前払い請求は支払月（currentMonth）に紐付け
     const inCycleA = advances.filter(a=>(a.date||'').startsWith(currentMonth));
 
     const planned  = inCycleR.reduce((s,r)=>s+r.amount,0)
@@ -741,7 +789,6 @@ function updateStats() {
     const advTotal = inCycleA.reduce((s,a)=>s+a.amount,0);
     const balance  = earned - advTotal;
 
-    // 表示更新
     const [y,m] = currentMonth.split('-');
     document.getElementById('rs-cycle-label').textContent = `${parseInt(m)}月サイクル`;
     document.getElementById('rs-period').textContent  = `${cyc.startDisp} 〜 ${cyc.endDisp}`;
@@ -786,7 +833,7 @@ function openForm(id) {
       document.getElementById('f-memo').value      = v.memo||'';
       document.getElementById('f-reward').value    = v.reward!=null?v.reward:'';
       selectStatus(v.status||0);
-      setPhotoPreviews(v.photos || (v.photo ? [v.photo] : [])); // 後方互換
+      setPhotoPreviews(v.photos || (v.photo ? [v.photo] : []));
     }
   } else {
     const now=new Date(); now.setMinutes(Math.ceil(now.getMinutes()/15)*15,0,0);
@@ -820,7 +867,6 @@ function saveVisit() {
   const errEl     = document.getElementById('form-error');
   if(!datetime){errEl.textContent='訪問日時を入力してください';return;}
   if(!name){errEl.textContent='お客様名を入力してください';return;}
-  // ID重複チェック（空欄はスキップ、編集中の自分自身は除外）
   if(customId){
     const dup = visits.find(x => x.customId === customId && x.id !== editingVisitId);
     if(dup){
@@ -941,7 +987,6 @@ function toggleStatus(id) {
   const v=visits.find(x=>x.id===id); if(!v)return;
   v.status=v.status===1?0:1;
   saveData(); renderList(); updateStats();
-  // マップ画面が開いていれば再描画
   if(document.getElementById('map-screen').style.display==='block') renderMapPins();
 }
 
@@ -955,11 +1000,15 @@ function openMapFromInput() {
 
 // ===== 設定 =====
 function openSettings() {
-  // ボタンの状態反映
+  // 週起算日ボタン
   [0,1,6].forEach(d => {
     const btn=document.getElementById('wdbtn-'+d);
     if(btn) btn.className='wd-btn'+(settings.weekStart===d?' active':'');
   });
+  // ★ 締め日・支払日を入力欄にセット
+  document.getElementById('s-closing-day').value = settings.closingDay;
+  document.getElementById('s-pay-day').value     = settings.payDay;
+  updateCyclePreview();
   showScreen('settings-screen');
 }
 function closeSettings() { showScreen('main-screen'); renderList(); updateStats(); }
@@ -970,7 +1019,6 @@ function setWeekStart(day) {
     const btn=document.getElementById('wdbtn-'+d);
     if(btn) btn.className='wd-btn'+(settings.weekStart===d?' active':'');
   });
-  if(currentTab==='week') updateWeekBar();
 }
 function clearAllData() {
   if(!confirm('すべてのデータを削除します。元に戻せません。よろしいですか？'))return;
@@ -1017,7 +1065,6 @@ function renderList() {
   const today=todayStr();
   let fv=[...visits], fa=[], fr=[];
 
-  // 検索モード：タブ関係なく全件検索
   if (isSearchMode) {
     const q = searchQuery.toLowerCase();
     fv = visits.filter(v =>
@@ -1053,7 +1100,7 @@ function renderList() {
       const cyc=getCycleRange(currentMonth);
       fr=rewards.filter(r=>r.date>=cyc.start && r.date<=cyc.end);
       fa=advances.filter(a=>(a.date||'').startsWith(currentMonth));
-    } else { // history
+    } else {
       fv=visits.filter(v=>v.status===1);
     }
   }
@@ -1148,14 +1195,11 @@ function renderList() {
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-
-// ===== 郵便番号検索（zipcloud API）=====
+// ===== 郵便番号検索 =====
 function onZipInput(el) {
-  // ハイフン自動挿入（3桁後）
   let v = el.value.replace(/[^0-9]/g, '');
   if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3,7);
   el.value = v;
-  // 7桁揃ったら自動検索
   if (v.replace('-','').length === 7) searchZip();
 }
 
@@ -1176,7 +1220,6 @@ async function searchZip() {
       const r = data.results[0];
       const addr = (r.address1||'') + (r.address2||'') + (r.address3||'');
       const current = document.getElementById('f-address').value;
-      // 既存入力がなければ自動セット、あれば末尾に補完
       if (!current.trim()) {
         document.getElementById('f-address').value = addr;
       } else if (!current.includes(r.address1||'')) {
@@ -1246,7 +1289,6 @@ function renderMapPins() {
 function openMultiMap() {
   const pins = getMapVisits().filter(v => v.status !== 1);
   if (pins.length === 0) { alert('未訪問の住所がありません'); return; }
-  // Google Maps で複数地点をウェイポイントとして開く（最大10件）
   const addrs = pins.slice(0, 10).map(v => encodeURIComponent(v.address));
   let url;
   if (addrs.length === 1) {
@@ -1284,6 +1326,7 @@ function init(){
 }
 init();
 </script>
+
 <!-- ===== マップ画面 ===== -->
 <div id="map-screen" class="map-screen">
   <div class="map-header">
@@ -1306,7 +1349,6 @@ init();
     <button class="btn-primary" style="background:#4285F4;" onclick="openMultiMap()">📍 まとめてマップで開く</button>
   </div>
 </div>
-
 
 </body>
 </html>
