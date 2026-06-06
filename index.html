@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="訪問予定">
-<title>ドラクル 訪問予定管理</title>
+<title>訪問予定管理</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif; background: #f5f5f3; color: #1a1a1a; min-height: 100vh; padding-bottom: 60px; }
@@ -239,7 +239,7 @@ textarea.form-input { resize:none; line-height:1.6; }
           <span class="rs-val earned" id="rs-earned">¥0</span>
         </div>
         <div class="rs-row">
-          <span class="rs-label">前借り合計</span>
+          <span class="rs-label">前払い請求金額合計</span>
           <span class="rs-val advance" id="rs-advance">¥0</span>
         </div>
         <div class="rs-row total">
@@ -258,7 +258,7 @@ textarea.form-input { resize:none; line-height:1.6; }
     <!-- 報酬タブ用ボタン -->
     <div id="reward-btn-area" style="display:none;">
       <button class="btn-green" onclick="openRewardForm()">＋ 報酬を記録</button>
-      <button class="btn-orange" onclick="openAdvanceForm()">💸 前借りを記録</button>
+      <button class="btn-orange" onclick="openAdvanceForm()">💸 前払い請求金額を記録</button>
     </div>
   </div>
 </div>
@@ -352,14 +352,14 @@ textarea.form-input { resize:none; line-height:1.6; }
 <div id="advance-form-screen" class="advance-form-screen">
   <div class="form-header fh-orange">
     <button class="btn-back" onclick="closeAdvanceForm()">← 戻る</button>
-    <span class="form-title" id="advance-form-title">前借りを記録</span>
+    <span class="form-title" id="advance-form-title">前払い請求金額を記録</span>
     <span style="width:48px;"></span>
   </div>
   <div class="wrap">
-    <div class="card"><p class="card-label">前借り日 *</p>
+    <div class="card"><p class="card-label">前払い請求日 *</p>
       <input type="date" id="af-date" class="form-input" />
     </div>
-    <div class="card"><p class="card-label">前借り金額（円）*</p>
+    <div class="card"><p class="card-label">前払い金額（円）*</p>
       <div class="yen-wrap">
         <input type="number" id="af-amount" class="form-input orange" placeholder="例：10000" min="1" inputmode="numeric" />
       </div>
@@ -715,7 +715,7 @@ function deleteReward(id) {
   saveData(); renderList(); updateStats();
 }
 
-// ===== 前借りフォーム =====
+// ===== 前払いフォーム =====
 function openAdvanceForm(id) {
   editingAdvanceId = id||null;
   document.getElementById('advance-form-title').textContent = id?'前借りを編集':'前借りを記録';
@@ -855,12 +855,12 @@ function renderList() {
         </div>`).join('');
     }
     if(fa.length>0){
-      html+=`<div class="section-head">前借り一覧</div>`;
+      html+=`<div class="section-head">前払い請求一覧</div>`;
       html+=fa.map(a=>`
         <div class="advance-card">
           <div class="advance-top">
             <div>
-              <div class="ac-tag">💸 前借り</div>
+              <div class="ac-tag">💸 前払い</div>
               <div class="ac-date">📅 ${a.date||''}</div>
               ${a.memo?`<div class="ac-memo">📝 ${esc(a.memo)}</div>`:''}
             </div>
