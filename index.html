@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="訪問予定">
-<title>訪問予定管理</title>
+<title>ドラクル 訪問予定管理</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',sans-serif; background: #f5f5f3; color: #1a1a1a; min-height: 100vh; padding-bottom: 60px; }
@@ -20,25 +20,19 @@ body { font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',s
 .btn-settings { font-size:18px; background:none; border:none; cursor:pointer; color:#aaa; padding:2px; }
 
 /* 統計 */
-.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:12px 0; }
+.stats { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin:12px 0; }
 .stat-card { background:#fff; border-radius:12px; border:1px solid #e8e8e6; padding:10px 4px; text-align:center; cursor:pointer; transition:border-color .15s; }
 .stat-card:active { border-color:#1a1a1a; }
 .stat-label { font-size:10px; color:#888; margin-bottom:4px; }
-.stat-num { font-size:18px; font-weight:700; color:#1a1a1a; }
+.stat-num { font-size:16px; font-weight:700; color:#1a1a1a; }
 .stat-unit { font-size:10px; color:#bbb; }
 
 /* タブ（5つ） */
-.tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:10px; }
+.tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-bottom:10px; }
 .tab-btn { padding:9px 2px; font-size:11px; font-weight:600; background:#f5f5f3; color:#888; border:none; border-radius:10px; cursor:pointer; transition:background .15s; }
 .tab-btn.active { background:#1a1a1a; color:#fff; }
 .tab-btn.reward-tab.active { background:#27ae60; }
 .tab-btn.reward-tab { color:#27ae60; background:#edfbf2; border:1px solid #c3efd4; }
-
-/* 週の期間バー */
-.week-range-bar { background:#fff; border-radius:10px; border:1px solid #e8e8e6; padding:8px 14px; margin-bottom:10px; display:none; }
-.week-range-bar.show { display:flex; align-items:center; justify-content:space-between; }
-.week-range-text { font-size:12px; color:#555; font-weight:600; }
-.week-start-tag { font-size:11px; color:#888; background:#f5f5f3; border-radius:6px; padding:2px 8px; }
 
 /* 月選択 */
 .month-selector { display:none; align-items:center; justify-content:space-between; background:#fff; border-radius:12px; border:1px solid #e8e8e6; padding:10px 14px; margin-bottom:10px; }
@@ -94,7 +88,7 @@ body { font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',s
 .rc-status-unearned { font-size:11px; color:#aaa; margin-top:4px; text-align:right; }
 .reward-actions { display:flex; gap:8px; margin-top:10px; }
 
-/* 前払いカード */
+/* 前払い請求カード */
 .advance-card { background:#fff7ee; border-radius:14px; border:1px solid #f0c080; padding:14px 16px; margin-bottom:10px; }
 .advance-top { display:flex; justify-content:space-between; align-items:flex-start; }
 .ac-tag    { font-size:11px; font-weight:700; color:#e67e22; margin-bottom:3px; }
@@ -188,9 +182,14 @@ textarea.form-input { resize:none; line-height:1.6; }
         <p class="stat-num" id="count-today">0</p>
         <p class="stat-unit">件</p>
       </div>
-      <div class="stat-card" onclick="switchTab('week')">
-        <p class="stat-label">今週</p>
-        <p class="stat-num" id="count-week">0</p>
+      <div class="stat-card" onclick="switchTab('tomorrow')">
+        <p class="stat-label">翌日</p>
+        <p class="stat-num" id="count-tomorrow">0</p>
+        <p class="stat-unit">件</p>
+      </div>
+      <div class="stat-card" onclick="switchTab('dayafter')">
+        <p class="stat-label">翌々日</p>
+        <p class="stat-num" id="count-dayafter">0</p>
         <p class="stat-unit">件</p>
       </div>
       <div class="stat-card" onclick="switchTab('month')">
@@ -206,17 +205,11 @@ textarea.form-input { resize:none; line-height:1.6; }
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" id="tab-today"   onclick="switchTab('today')">今日</button>
-      <button class="tab-btn"        id="tab-week"    onclick="switchTab('week')">今週</button>
-      <button class="tab-btn"        id="tab-month"   onclick="switchTab('month')">月別</button>
-      <button class="tab-btn"        id="tab-history" onclick="switchTab('history')">履歴</button>
+      <button class="tab-btn active" id="tab-today"    onclick="switchTab('today')">今日</button>
+      <button class="tab-btn"        id="tab-tomorrow" onclick="switchTab('tomorrow')">翌日</button>
+      <button class="tab-btn"        id="tab-dayafter" onclick="switchTab('dayafter')">翌々日</button>
+      <button class="tab-btn"        id="tab-month"    onclick="switchTab('month')">月別</button>
       <button class="tab-btn reward-tab" id="tab-reward" onclick="switchTab('reward')">💰報酬</button>
-    </div>
-
-    <!-- 今週の期間表示バー -->
-    <div class="week-range-bar" id="week-range-bar">
-      <span class="week-range-text" id="week-range-text"></span>
-      <span class="week-start-tag" id="week-start-tag"></span>
     </div>
 
     <!-- 月選択ナビ -->
@@ -226,12 +219,20 @@ textarea.form-input { resize:none; line-height:1.6; }
       <button class="month-nav" onclick="changeMonth(1)">›</button>
     </div>
 
-    <!-- 報酬サマリー（月別・報酬タブで表示） -->
+    <!-- 報酬サマリー（報酬タブのみ） -->
     <div class="reward-summary" id="reward-summary">
-      <div class="reward-summary-hd">💰 報酬サマリー</div>
+      <div class="reward-summary-hd">💰 報酬サマリー <span id="rs-cycle-label" style="font-size:11px;font-weight:400;opacity:.85;margin-left:6px;"></span></div>
       <div class="rs-rows">
+        <div class="rs-row" style="background:#f0f9ff;">
+          <span class="rs-label" style="font-size:12px;color:#2980b9;">📅 集計期間</span>
+          <span style="font-size:12px;font-weight:600;color:#2980b9;" id="rs-period">—</span>
+        </div>
+        <div class="rs-row" style="background:#f0f9ff;">
+          <span class="rs-label" style="font-size:12px;color:#2980b9;">💳 支払予定日</span>
+          <span style="font-size:12px;font-weight:600;color:#2980b9;" id="rs-payday">—</span>
+        </div>
         <div class="rs-row">
-          <span class="rs-label">予定報酬（未訪問含む）</span>
+          <span class="rs-label">予定報酬（未確定含む）</span>
           <span class="rs-val planned" id="rs-planned">¥0</span>
         </div>
         <div class="rs-row">
@@ -239,11 +240,11 @@ textarea.form-input { resize:none; line-height:1.6; }
           <span class="rs-val earned" id="rs-earned">¥0</span>
         </div>
         <div class="rs-row">
-          <span class="rs-label">前払い請求金額合計</span>
+          <span class="rs-label">前払い請求合計</span>
           <span class="rs-val advance" id="rs-advance">¥0</span>
         </div>
         <div class="rs-row total">
-          <span class="rs-label bold">差し引き残高</span>
+          <span class="rs-label bold">差し引き残高（支払見込）</span>
           <span class="rs-val bal-pos" id="rs-balance">¥0</span>
         </div>
       </div>
@@ -258,7 +259,7 @@ textarea.form-input { resize:none; line-height:1.6; }
     <!-- 報酬タブ用ボタン -->
     <div id="reward-btn-area" style="display:none;">
       <button class="btn-green" onclick="openRewardForm()">＋ 報酬を記録</button>
-      <button class="btn-orange" onclick="openAdvanceForm()">💸 前払い請求金額を記録</button>
+      <button class="btn-orange" onclick="openAdvanceForm()">💸 前払い請求を記録</button>
     </div>
   </div>
 </div>
@@ -348,18 +349,18 @@ textarea.form-input { resize:none; line-height:1.6; }
   </div>
 </div>
 
-<!-- ===== 前払いフォーム ===== -->
+<!-- ===== 前払い請求フォーム ===== -->
 <div id="advance-form-screen" class="advance-form-screen">
   <div class="form-header fh-orange">
     <button class="btn-back" onclick="closeAdvanceForm()">← 戻る</button>
-    <span class="form-title" id="advance-form-title">前払い請求金額を記録</span>
+    <span class="form-title" id="advance-form-title">前払い請求を記録</span>
     <span style="width:48px;"></span>
   </div>
   <div class="wrap">
     <div class="card"><p class="card-label">前払い請求日 *</p>
       <input type="date" id="af-date" class="form-input" />
     </div>
-    <div class="card"><p class="card-label">前払い金額（円）*</p>
+    <div class="card"><p class="card-label">前払い請求金額（円）*</p>
       <div class="yen-wrap">
         <input type="number" id="af-amount" class="form-input orange" placeholder="例：10000" min="1" inputmode="numeric" />
       </div>
@@ -488,21 +489,19 @@ function showScreen(name) {
 // ===== タブ切替 =====
 function switchTab(tab) {
   currentTab = tab;
-  ['today','week','month','history','reward'].forEach(t =>
-    document.getElementById('tab-'+t).classList.toggle('active', t===tab)
-  );
-  const isWeek   = tab === 'week';
+  ['today','tomorrow','dayafter','month','reward'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.classList.toggle('active', t===tab);
+  });
   const isMonth  = tab === 'month';
   const isReward = tab === 'reward';
   const isMonthOrReward = isMonth || isReward;
 
-  document.getElementById('week-range-bar').classList.toggle('show', isWeek);
   document.getElementById('month-selector').classList.toggle('show', isMonthOrReward);
   document.getElementById('reward-summary').classList.toggle('show', isReward);
   document.getElementById('main-btn-area').style.display   = isReward ? 'none' : 'block';
   document.getElementById('reward-btn-area').style.display = isReward ? 'block' : 'none';
 
-  if (isWeek) updateWeekBar();
   if (isMonthOrReward) updateMonthLabel();
   renderList();
   updateStats();
@@ -519,7 +518,11 @@ function changeMonth(delta) {
 }
 function updateMonthLabel() {
   const [y,m] = currentMonth.split('-');
-  document.getElementById('month-label').textContent = `${y}年 ${parseInt(m)}月`;
+  if (currentTab === 'reward') {
+    document.getElementById('month-label').textContent = `${y}年 ${parseInt(m)}月サイクル`;
+  } else {
+    document.getElementById('month-label').textContent = `${y}年 ${parseInt(m)}月`;
+  }
 }
 
 // ===== 週バー更新 =====
@@ -547,6 +550,10 @@ function todayStr() {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
 }
+function offsetDay(delta) {
+  const n = new Date(); n.setDate(n.getDate()+delta);
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
 function thisMonthStr() {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
@@ -564,29 +571,66 @@ function fmtYen(n) {
   return '¥'+Number(n).toLocaleString('ja-JP');
 }
 
+
+// ===== 締め日サイクル計算（15日締め・27日払い）=====
+// cycleMonth: 'YYYY-MM' 形式の支払月
+// 例）'2026-06' → 集計期間: 2026-05-16 〜 2026-06-15、支払日: 2026-06-27
+function getCycleRange(cycleMonth) {
+  const [y, m] = cycleMonth.split('-').map(Number);
+  // 前月16日〜当月15日
+  const prevDate = new Date(y, m-2, 16); // 前月16日
+  const endDate  = new Date(y, m-1, 15); // 当月15日
+  const payday   = new Date(y, m-1, 27); // 当月27日
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const fmtDisp = d => `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+  return {
+    start:    fmt(prevDate),
+    end:      fmt(endDate),
+    payday:   fmt(payday),
+    startDisp: fmtDisp(prevDate),
+    endDisp:   fmtDisp(endDate),
+    paydayDisp: fmtDisp(payday),
+  };
+}
 // ===== 統計 =====
 function updateStats() {
-  const today=todayStr(), week=getWeekRange(), tMonth=thisMonthStr();
-  const vAll   = visits.filter(v=>v.status===1);
-  const vToday = vAll.filter(v=>toDateStr(v.datetime)===today);
-  const vWeek  = vAll.filter(v=>{const d=toDateStr(v.datetime);return d>=week.start&&d<=week.end;});
-  const vMonth = vAll.filter(v=>(v.datetime||'').startsWith(tMonth));
-  document.getElementById('count-today').textContent = vToday.length;
-  document.getElementById('count-week').textContent  = vWeek.length;
-  document.getElementById('count-month').textContent = vMonth.length;
-  document.getElementById('count-total').textContent = vAll.length;
+  const today=todayStr(), tMonth=thisMonthStr();
+  const tom  = offsetDay(1), da = offsetDay(2);
+  // 統計は未訪問含む全件（予定件数として表示）
+  const vToday    = visits.filter(v=>toDateStr(v.datetime)===today);
+  const vTomorrow = visits.filter(v=>toDateStr(v.datetime)===tom);
+  const vDayafter = visits.filter(v=>toDateStr(v.datetime)===da);
+  const vMonth    = visits.filter(v=>(v.datetime||'').startsWith(tMonth));
+  const vAll      = visits.filter(v=>v.status===1);
+  document.getElementById('count-today').textContent    = vToday.length;
+  document.getElementById('count-tomorrow').textContent = vTomorrow.length;
+  document.getElementById('count-dayafter').textContent = vDayafter.length;
+  document.getElementById('count-month').textContent    = vMonth.length;
+  document.getElementById('count-total').textContent    = vAll.length;
 
   if (currentTab==='reward') {
-    // 報酬タブ単独登録
-    const inMonthR = rewards.filter(r=>(r.date||'').startsWith(currentMonth));
-    // 訪問フォームから入力した報酬（visits.reward）
-    const inMonthV = visits.filter(v=>(v.datetime||'').startsWith(currentMonth)&&v.reward!=null);
-    const planned  = inMonthR.reduce((s,r)=>s+r.amount,0)
-                   + inMonthV.reduce((s,v)=>s+v.reward,0);
-    const earned   = inMonthR.filter(r=>r.status===1).reduce((s,r)=>s+r.amount,0)
-                   + inMonthV.filter(v=>v.status===1).reduce((s,v)=>s+v.reward,0);
-    const advTotal = advances.filter(a=>(a.date||'').startsWith(currentMonth)).reduce((s,a)=>s+a.amount,0);
+    const cyc = getCycleRange(currentMonth);
+    // 集計期間内（前月16日〜当月15日）のデータを対象
+    const inCycleR = rewards.filter(r=>r.date>=cyc.start && r.date<=cyc.end);
+    const inCycleV = visits.filter(v=>{
+      const d=toDateStr(v.datetime);
+      return d>=cyc.start && d<=cyc.end && v.reward!=null;
+    });
+    // 前払い請求は支払月（currentMonth）に紐付け
+    const inCycleA = advances.filter(a=>(a.date||'').startsWith(currentMonth));
+
+    const planned  = inCycleR.reduce((s,r)=>s+r.amount,0)
+                   + inCycleV.reduce((s,v)=>s+v.reward,0);
+    const earned   = inCycleR.filter(r=>r.status===1).reduce((s,r)=>s+r.amount,0)
+                   + inCycleV.filter(v=>v.status===1).reduce((s,v)=>s+v.reward,0);
+    const advTotal = inCycleA.reduce((s,a)=>s+a.amount,0);
     const balance  = earned - advTotal;
+
+    // 表示更新
+    const [y,m] = currentMonth.split('-');
+    document.getElementById('rs-cycle-label').textContent = `${parseInt(m)}月サイクル`;
+    document.getElementById('rs-period').textContent  = `${cyc.startDisp} 〜 ${cyc.endDisp}`;
+    document.getElementById('rs-payday').textContent  = cyc.paydayDisp;
     document.getElementById('rs-planned').textContent = fmtYen(planned);
     document.getElementById('rs-earned').textContent  = fmtYen(earned);
     document.getElementById('rs-advance').textContent = fmtYen(advTotal);
@@ -715,10 +759,10 @@ function deleteReward(id) {
   saveData(); renderList(); updateStats();
 }
 
-// ===== 前払いフォーム =====
+// ===== 前払い請求フォーム =====
 function openAdvanceForm(id) {
   editingAdvanceId = id||null;
-  document.getElementById('advance-form-title').textContent = id?'前借りを編集':'前借りを記録';
+  document.getElementById('advance-form-title').textContent = id?'前払い請求を編集':'前払い請求を記録';
   document.getElementById('advance-form-error').textContent = '';
   if(id){
     const a=advances.find(x=>x.id===id);
@@ -752,7 +796,7 @@ function saveAdvance() {
   saveData(); showScreen('main-screen'); switchTab('reward'); updateStats();
 }
 function deleteAdvance(id) {
-  if(!confirm('この前払い記録を削除しますか？'))return;
+  if(!confirm('この前払い請求記録を削除しますか？'))return;
   advances=advances.filter(x=>x.id!==id);
   saveData(); renderList(); updateStats();
 }
@@ -809,13 +853,16 @@ function renderList() {
 
   if(currentTab==='today'){
     fv=visits.filter(v=>toDateStr(v.datetime)===today);
-  } else if(currentTab==='week'){
-    fv=visits.filter(v=>{const d=toDateStr(v.datetime);return d>=week.start&&d<=week.end;});
+  } else if(currentTab==='tomorrow'){
+    fv=visits.filter(v=>toDateStr(v.datetime)===offsetDay(1));
+  } else if(currentTab==='dayafter'){
+    fv=visits.filter(v=>toDateStr(v.datetime)===offsetDay(2));
   } else if(currentTab==='month'){
     fv=visits.filter(v=>(v.datetime||'').startsWith(currentMonth));
   } else if(currentTab==='reward'){
     fv=[];
-    fr=rewards.filter(r=>(r.date||'').startsWith(currentMonth));
+    const cyc=getCycleRange(currentMonth);
+    fr=rewards.filter(r=>r.date>=cyc.start && r.date<=cyc.end);
     fa=advances.filter(a=>(a.date||'').startsWith(currentMonth));
   } else { // history
     fv=visits.filter(v=>v.status===1);
@@ -860,7 +907,7 @@ function renderList() {
         <div class="advance-card">
           <div class="advance-top">
             <div>
-              <div class="ac-tag">💸 前払い</div>
+              <div class="ac-tag">💸 前払い請求</div>
               <div class="ac-date">📅 ${a.date||''}</div>
               ${a.memo?`<div class="ac-memo">📝 ${esc(a.memo)}</div>`:''}
             </div>
