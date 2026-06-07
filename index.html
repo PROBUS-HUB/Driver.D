@@ -310,6 +310,7 @@ input[type="datetime-local"], input[type="search"] {
   font-size: 15px;
   word-break: break-all;
 }
+
 </style>
 </head>
 <body>
@@ -2476,17 +2477,65 @@ async function searchZip() {
   }
 }
 
-// ===== マップ画面 =====
-let mapFilter = 'all';
+// ===== マップ画面（Leaflet + OpenStreetMap）=====
+let mapFilter   = 'all';
+let leafletMap  = null;
+let leafletMarkers = [];
+const geocodeCache = {}; // 住所 → {lat,lng} キャッシュ
 
 function openMapScreen() {
-  renderMapPins();
   showScreen('map-screen');
+
+  if (typeof L === 'undefined') {
+    // Leaflet未ロード → 動的に読み込んでから初期化（returnで以降はスキップ）
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id   = 'leaflet-css';
+      link.rel  = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+    if (!document.getElementById('leaflet-js')) {
+      const statusEl = document.getElementById('map-geocode-status');
+      if (statusEl) statusEl.textContent = '🗺 地図を読み込み中...';
+      const script = document.createElement('script');
+      script.id  = 'leaflet-js';
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = () => {
+        initLeafletMap();
+        setTimeout(() => renderMapPins(), 100);
+      };
+      script.onerror = () => {
+        const s = document.getElementById('map-geocode-status');
+        if (s) s.textContent = '⚠️ 地図の読み込みに失敗しました（通信を確認してください）';
+      };
+      document.head.appendChild(script);
+    }
+    return; // ← Lが定義されていない間は以降を実行しない
+  }
+
+  // すでにロード済みの場合
+  initLeafletMap();
+  setTimeout(() => { if(leafletMap) leafletMap.invalidateSize(); renderMapPins(); }, 150);
 }
+
+function initLeafletMap() {
+  if (leafletMap) {
+    leafletMap.invalidateSize();
+    return;
+  }
+  leafletMap = L.map('leaflet-map', { zoomControl: true }).setView([35.6812, 139.7671], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(leafletMap);
+}
+
 function closeMapScreen() {
   showScreen('main-screen');
   renderList();
 }
+
 function setMapFilter(f) {
   mapFilter = f;
   ['all','unvisited','today'].forEach(k => {
@@ -2503,16 +2552,62 @@ function getMapVisits() {
   return base;
 }
 
-function renderMapPins() {
-  const list = document.getElementById('map-pin-list');
+// Nominatim で住所→座標変換（キャッシュ付き・レート制限考慮）
+async function geocodeAddress(address) {
+  if (geocodeCache[address]) return geocodeCache[address];
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
+                encodeURIComponent(address);
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'ja' } });
+    const data = await res.json();
+    if (data && data.length > 0) {
+      const coord = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      geocodeCache[address] = coord;
+      return coord;
+    }
+  } catch(e) {}
+  return null;
+}
+
+// カスタムアイコン生成
+function makeIcon(color, label) {
+  const initial = label ? label.charAt(0) : '●';
+  return L.divIcon({
+    className: '',
+    html: '<div style="' +
+          'width:32px;height:32px;border-radius:50% 50% 50% 0;' +
+          'background:' + color + ';' +
+          'border:2px solid #fff;' +
+          'box-shadow:0 2px 6px rgba(0,0,0,.4);' +
+          'transform:rotate(-45deg);' +
+          'display:flex;align-items:center;justify-content:center;">' +
+          '<span style="transform:rotate(45deg);color:#fff;font-size:11px;font-weight:700;line-height:1;">' +
+          initial + '</span></div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -34]
+  });
+}
+
+async function renderMapPins() {
   const pins = getMapVisits();
+  const statusEl = document.getElementById('map-geocode-status');
+
+  // 既存マーカーを削除
+  leafletMarkers.forEach(m => leafletMap.removeLayer(m));
+  leafletMarkers = [];
+
+  const multiBtnWrap = document.getElementById('map-multi-btn-wrap');
+
   if (pins.length === 0) {
-    list.innerHTML = '<div class="map-empty">表示できる住所がありません<br><span style="font-size:12px;">（住所が登録されている予定のみ表示）</span></div>';
-    document.getElementById('map-multi-btn-wrap').style.display = 'none';
+    multiBtnWrap.style.display = 'none';
+    statusEl.textContent = '';
     return;
   }
-  document.getElementById('map-multi-btn-wrap').style.display = 'block';
-  list.innerHTML = pins.map(v => `
+  multiBtnWrap.style.display = 'block';
+
+  // ピン一覧は地図ポップアップで表示するため非表示
+  if (false) pins.map(v => `
     <div class="map-pin-item" id="pin-${v.id}">
       <span class="map-pin-dot ${v.status===1?'visited':'unvisited'}"></span>
       <div class="map-pin-info">
@@ -2523,20 +2618,66 @@ function renderMapPins() {
       <button class="map-pin-open" onclick="openMap('${esc(v.address)}')">開く</button>
     </div>
   `).join('');
+
+  // ジオコーディング
+  statusEl.textContent = '📍 地図を読み込み中...';
+  const bounds = [];
+  let done = 0;
+
+  for (const v of pins) {
+    // Nominatim レート制限対策（1秒間隔）
+    if (done > 0) await new Promise(r => setTimeout(r, 1100));
+    const coord = await geocodeAddress(v.address);
+    done++;
+    if (!coord) continue;
+
+    const color  = v.status === 1 ? '#27ae60' : '#e74c3c';
+    const marker = L.marker([coord.lat, coord.lng], { icon: makeIcon(color, v.name) })
+      .addTo(leafletMap)
+      .bindPopup(
+        '<b style="font-size:13px;">' + esc(v.name) + '</b><br>' +
+        '<span style="font-size:11px;color:#888;">' + esc(v.address) + '</span><br>' +
+        '<span style="font-size:11px;color:#555;">' + formatDT(v.datetime) + '</span><br>' +
+        '<a href="https://maps.google.com/?q=' + encodeURIComponent(v.address) + '" target="_blank" ' +
+        'style="font-size:12px;color:#4285F4;font-weight:600;display:inline-block;margin-top:4px;">🗺 Googleマップで開く</a>'
+      );
+    leafletMarkers.push(marker);
+    bounds.push([coord.lat, coord.lng]);
+
+    statusEl.textContent = done + ' / ' + pins.length + ' 件読み込み済';
+
+    // ピン追加のたびに地図を更新
+    if (bounds.length === 1) {
+      leafletMap.setView([coord.lat, coord.lng], 13);
+    } else {
+      leafletMap.fitBounds(bounds, { padding: [30, 30] });
+    }
+  }
+
+  if (bounds.length === 0) {
+    statusEl.textContent = '⚠️ 座標を取得できませんでした';
+  } else {
+    statusEl.textContent = '✅ ' + bounds.length + '件表示中';
+  }
+}
+
+function openMap(address) {
+  if (!address) return;
+  window.open('https://maps.google.com/?q=' + encodeURIComponent(address), '_blank');
+}
+function openMapFromInput() {
+  const addr = document.getElementById('f-address').value.trim();
+  if (!addr) { alert('住所を入力してください'); return; }
+  openMap(addr);
 }
 
 function openMultiMap() {
   const pins = getMapVisits().filter(v => v.status !== 1);
   if (pins.length === 0) { alert('未訪問の住所がありません'); return; }
   const addrs = pins.slice(0, 10).map(v => encodeURIComponent(v.address));
-  let url;
-  if (addrs.length === 1) {
-    url = `https://maps.google.com/?q=${addrs[0]}`;
-  } else {
-    const dest = addrs[addrs.length - 1];
-    const waypoints = addrs.slice(0, -1).join('/');
-    url = `https://www.google.com/maps/dir/${waypoints}/${dest}`;
-  }
+  const url = addrs.length === 1
+    ? 'https://maps.google.com/?q=' + addrs[0]
+    : 'https://www.google.com/maps/dir/' + addrs.slice(0,-1).join('/') + '/' + addrs[addrs.length-1];
   window.open(url, '_blank');
 }
 
@@ -2584,12 +2725,13 @@ init();
   </div>
   <div class="map-legend">
     <span class="legend-item"><span class="legend-dot unvisited"></span>未訪問</span>
-    <span class="legend-item"><span class="legend-dot visited"></span>訪問済（参考表示）</span>
-    <span style="font-size:11px;color:#aaa;margin-left:auto;">訪問済みにするとピンが消えます</span>
+    <span class="legend-item"><span class="legend-dot visited"></span>訪問済</span>
+    <span style="font-size:11px;color:#aaa;margin-left:auto;" id="map-geocode-status"></span>
   </div>
-  <div class="map-pin-list" id="map-pin-list"></div>
+  <!-- Leaflet地図エリア -->
+  <div id="leaflet-map" style="width:100%;height:calc(100vh - 155px);z-index:1;"></div>
   <div id="map-multi-btn-wrap" style="max-width:480px;margin:0 auto;padding:0 16px 16px;">
-    <button class="btn-primary" style="background:#4285F4;" onclick="openMultiMap()">📍 まとめてマップで開く</button>
+    <button class="btn-primary" style="background:#4285F4;" onclick="openMultiMap()">📍 Googleマップで開く</button>
   </div>
 </div>
 
