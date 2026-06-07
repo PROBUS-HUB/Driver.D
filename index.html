@@ -374,6 +374,7 @@ input[type="datetime-local"], input[type="search"] {
       <button class="tab-btn"        id="tab-dayafter" onclick="switchTab('dayafter')">翌々日</button>
       <button class="tab-btn"        id="tab-month"    onclick="switchTab('month')">月別</button>
       <button class="tab-btn reward-tab" id="tab-reward" onclick="switchTabWithLock('reward')">💰報酬</button>
+      <button class="tab-btn" id="tab-expense" onclick="switchTab('expense')" style="color:#e67e22;background:#fff7ee;border:1px solid #f0c080;">🚗経費</button>
     </div>
 
     <div class="month-selector" id="month-selector">
@@ -405,8 +406,12 @@ input[type="datetime-local"], input[type="search"] {
           <span class="rs-label">前払い請求合計</span>
           <span class="rs-val advance" id="rs-advance">¥0</span>
         </div>
+        <div class="rs-row">
+          <span class="rs-label">経費立替合計（支払に加算）</span>
+          <span class="rs-val" style="color:#795548;font-weight:700;" id="rs-expense">¥0</span>
+        </div>
         <div class="rs-row total">
-          <span class="rs-label bold">差し引き残高（支払見込）</span>
+          <span class="rs-label bold">支払見込合計（報酬＋経費立替）</span>
           <span class="rs-val bal-pos" id="rs-balance">¥0</span>
         </div>
       </div>
@@ -419,6 +424,9 @@ input[type="datetime-local"], input[type="search"] {
     </div>
     <div id="reward-btn-area" style="display:none;">
       <button class="btn-orange" onclick="openAdvanceForm()">💸 前払い請求を記録</button>
+    </div>
+    <div id="expense-btn-area" style="display:none;">
+      <button class="btn-primary" style="background:#e67e22;" onclick="openExpenseForm()">＋ 経費を記録</button>
     </div>
   </div>
 </div>
@@ -534,6 +542,41 @@ input[type="datetime-local"], input[type="search"] {
   </div>
 </div>
 
+<!-- ===== 経費フォーム ===== -->
+<div id="expense-form-screen" style="display:none;">
+  <div class="form-header" style="background:#795548;">
+    <button class="btn-back" onclick="closeExpenseForm()">← 戻る</button>
+    <div style="text-align:center;">
+      <div class="form-title" id="expense-form-title">経費を記録</div>
+      <div id="expense-form-subtitle" style="font-size:11px;opacity:.7;margin-top:1px;"></div>
+    </div>
+    <span style="width:48px;"></span>
+  </div>
+  <div class="wrap">
+    <div class="card"><p class="card-label">日付 *</p>
+      <input type="date" id="ef-date" class="form-input" />
+    </div>
+    <div class="card"><p class="card-label">経費カテゴリ *</p>
+      <input type="text" id="ef-cat" class="form-input" placeholder="例：燃料代、高速代、駐車場代…" />
+    </div>
+    <div class="card"><p class="card-label">金額（円）*</p>
+      <div class="yen-wrap">
+        <input type="number" id="ef-amount" class="form-input orange" placeholder="例：3000" min="1" inputmode="numeric" />
+      </div>
+    </div>
+    <div class="card"><p class="card-label">メモ</p>
+      <textarea id="ef-memo" class="form-input" rows="3" placeholder="例：○○SA給油 45L"></textarea>
+    </div>
+    <div class="card">
+      <p class="card-label">写真 <span class="photo-count" id="exp-photo-count">0 / 3枚</span></p>
+      <input type="file" id="ef-photo" accept="image/*" style="display:none;" />
+      <div class="photo-grid" id="exp-photo-grid"></div>
+    </div>
+    <p class="error-msg" id="expense-form-error"></p>
+    <button class="btn-primary" style="background:#795548;" onclick="saveExpense()">記録する</button>
+  </div>
+</div>
+
 <!-- ===== 設定画面 ===== -->
 <div id="settings-screen" class="settings-screen">
   <div class="form-header fh-gray">
@@ -624,13 +667,15 @@ const KEY_VISITS   = 'dorakuru_visits';
 const KEY_ADVANCES = 'dorakuru_advances';
 const KEY_REWARDS  = 'dorakuru_rewards';
 const KEY_SETTINGS = 'dorakuru_settings';
-const KEY_FIRST_VISIT = 'dorakuru_first_visit'; // 最初の訪問登録日時（ISO文字列）
+const KEY_FIRST_VISIT = 'dorakuru_first_visit';
+const KEY_EXPENSES  = 'dorakuru_expenses'; // 最初の訪問登録日時（ISO文字列）
 
 let visits   = [];
 let advances = [];
 let rewards  = [];
+let expenses = [];
 // ★ closingDay・payDay を settings に追加（デフォルト15日締め・27日払い）
-let settings = { weekStart: 1, closingDay: 15, payDay: 27, unlockYM: '' }; // unlockYM: 'YYYY-MM' 形式で解除済み月を保存
+let settings = { weekStart: 1, closingDay: 15, payDay: 27, unlockExpiry: '' }; // unlockExpiry: 翌月同日 'YYYY-MM-DD' 形式
 
 let editingVisitId   = null;
 let searchQuery = '';
@@ -649,15 +694,17 @@ let currentMonth = (() => {
 // ===== データ読み書き =====
 function loadData() {
   try { visits   = JSON.parse(localStorage.getItem(KEY_VISITS)   || '[]'); } catch(e) { visits=[]; }
+  try { expenses = JSON.parse(localStorage.getItem(KEY_EXPENSES) || '[]'); } catch(e) { expenses=[]; }
   try { advances = JSON.parse(localStorage.getItem(KEY_ADVANCES) || '[]'); } catch(e) { advances=[]; }
   try { rewards  = JSON.parse(localStorage.getItem(KEY_REWARDS)  || '[]'); } catch(e) { rewards=[]; }
   try {
     // ★ closingDay・payDay もマージ（既存データとの後方互換）
-    settings = { weekStart:1, closingDay:15, payDay:27, unlockYM:'', ...JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}') };
+    settings = { weekStart:1, closingDay:15, payDay:27, unlockExpiry:'', ...JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}') };
   } catch(e) {}
 }
 function saveData() {
   try { localStorage.setItem(KEY_VISITS,   JSON.stringify(visits));   } catch(e) {}
+  try { localStorage.setItem(KEY_EXPENSES, JSON.stringify(expenses)); } catch(e) {}
   try { localStorage.setItem(KEY_ADVANCES, JSON.stringify(advances)); } catch(e) {}
   try { localStorage.setItem(KEY_REWARDS,  JSON.stringify(rewards));  } catch(e) {}
   try { localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings)); } catch(e) {}
@@ -744,7 +791,7 @@ function setPhotoPreviews(photos) {
 }
 
 // ===== 画面切替 =====
-const SCREENS = ['main-screen','form-screen','reward-form-screen','advance-form-screen','settings-screen','map-screen'];
+const SCREENS = ['main-screen','form-screen','reward-form-screen','advance-form-screen','expense-form-screen','settings-screen','map-screen'];
 function showScreen(name) {
   SCREENS.forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById(name).style.display = 'block';
@@ -767,14 +814,19 @@ function switchTab(tab) {
     const el = document.getElementById('tab-'+t);
     if (el) el.classList.toggle('active', t===tab);
   });
-  const isMonth  = tab === 'month';
-  const isReward = tab === 'reward';
+  const isMonth   = tab === 'month';
+  const isReward  = tab === 'reward';
+  const isExpense = tab === 'expense';
   const isMonthOrReward = isMonth || isReward;
 
   document.getElementById('month-selector').classList.toggle('show', isMonthOrReward);
   document.getElementById('reward-summary').classList.toggle('show', isReward);
-  document.getElementById('main-btn-area').style.display   = isReward ? 'none' : 'block';
-  document.getElementById('reward-btn-area').style.display = isReward ? 'block' : 'none';
+  document.getElementById('main-btn-area').style.display    = (isReward||isExpense) ? 'none' : 'block';
+  document.getElementById('reward-btn-area').style.display  = isReward  ? 'block' : 'none';
+  document.getElementById('expense-btn-area').style.display = isExpense ? 'block' : 'none';
+  // 経費タブのアクティブ状態
+  const expTab = document.getElementById('tab-expense');
+  if (expTab) expTab.classList.toggle('active', isExpense);
 
   if (isMonthOrReward) updateMonthLabel();
   renderList();
@@ -912,6 +964,8 @@ function updateStats() {
   document.getElementById('count-month').textContent    = vMonth.length;
   document.getElementById('count-total').textContent    = vAll.length;
 
+  // 経費タブのカウントは別途 renderExpenseList 内で管理
+
   if (currentTab==='reward') {
     const cyc = getCycleRange(currentMonth);
     const inCycleR = rewards.filter(r=>r.date>=cyc.start && r.date<=cyc.end);
@@ -920,13 +974,16 @@ function updateStats() {
       return d>=cyc.start && d<=cyc.end && v.reward!=null;
     });
     const inCycleA = advances.filter(a=>(a.date||'').startsWith(currentMonth));
+    // 経費：集計期間内の日付のもの（訪問紐付け・単独どちらも含む）
+    const inCycleE = expenses.filter(e=>(e.date||'')>=cyc.start && (e.date||'')<=cyc.end);
 
     const planned  = inCycleR.reduce((s,r)=>s+r.amount,0)
                    + inCycleV.reduce((s,v)=>s+v.reward,0);
     const earned   = inCycleR.filter(r=>r.status===1).reduce((s,r)=>s+r.amount,0)
                    + inCycleV.filter(v=>v.status===1).reduce((s,v)=>s+v.reward,0);
     const advTotal = inCycleA.reduce((s,a)=>s+a.amount,0);
-    const balance  = earned - advTotal;
+    const expTotal = inCycleE.reduce((s,e)=>s+e.amount,0);
+    const balance  = earned + expTotal - advTotal; // 経費は立替→上乗せ支払いのためプラス
 
     const [y,m] = currentMonth.split('-');
     document.getElementById('rs-cycle-label').textContent = `${parseInt(m)}月サイクル`;
@@ -935,6 +992,7 @@ function updateStats() {
     document.getElementById('rs-planned').textContent = fmtYen(planned);
     document.getElementById('rs-earned').textContent  = fmtYen(earned);
     document.getElementById('rs-advance').textContent = fmtYen(advTotal);
+    document.getElementById('rs-expense').textContent = fmtYen(expTotal);
     const balEl = document.getElementById('rs-balance');
     balEl.textContent = (balance<0?'▲':'')+fmtYen(Math.abs(balance));
     balEl.className = 'rs-val '+(balance>=0?'bal-pos':'bal-neg');
@@ -1117,6 +1175,198 @@ function deleteAdvance(id) {
   saveData(); renderList(); updateStats();
 }
 
+
+// ===== 経費管理 =====
+const MAX_EXP_PHOTOS = 3;
+let expPhotos        = [];   // 経費フォーム用写真
+let editingExpenseId = null;
+let expenseVisitId   = null; // 紐付け先の訪問ID（nullなら単独記録）
+
+// 経費フォーム用写真入力
+document.addEventListener('DOMContentLoaded', () => {
+  const ef = document.getElementById('ef-photo');
+  if (ef) ef.addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    this.value = '';
+    if (expPhotos.length >= MAX_EXP_PHOTOS) { alert('写真は最大' + MAX_EXP_PHOTOS + '枚までです'); return; }
+    compressImage(file, dataUrl => { expPhotos.push(dataUrl); renderExpPhotoGrid(); });
+  });
+});
+
+function renderExpPhotoGrid() {
+  const grid  = document.getElementById('exp-photo-grid');
+  const count = document.getElementById('exp-photo-count');
+  if (!grid) return;
+  count.textContent = expPhotos.length + ' / ' + MAX_EXP_PHOTOS + '枚';
+  let h = expPhotos.map((src, i) => `
+    <div class="photo-thumb">
+      <img src="${src}" alt="写真${i+1}" onclick="viewExpPhoto(${i})" />
+      <button class="photo-thumb-del" onclick="removeExpPhoto(${i})">✕</button>
+    </div>`).join('');
+  if (expPhotos.length < MAX_EXP_PHOTOS) {
+    h += `<div class="photo-add-slot" onclick="document.getElementById('ef-photo').click()">
+      <span class="photo-add-icon">📷</span><span class="photo-add-text">追加</span></div>`;
+  }
+  grid.innerHTML = h;
+}
+function removeExpPhoto(idx) { expPhotos.splice(idx, 1); renderExpPhotoGrid(); }
+function viewExpPhoto(idx) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = () => document.body.removeChild(overlay);
+  const img = document.createElement('img');
+  img.src = expPhotos[idx];
+  img.style.cssText = 'max-width:95vw;max-height:90vh;border-radius:8px;object-fit:contain;';
+  overlay.appendChild(img); document.body.appendChild(overlay);
+}
+
+// フォームを開く（id=編集ID, visitId=訪問紐付けID, visitName=訪問先名）
+function openExpenseForm(id, visitId, visitName) {
+  editingExpenseId = id   || null;
+  expenseVisitId   = visitId || null;
+  expPhotos        = [];
+  document.getElementById('expense-form-title').textContent    = id ? '経費を編集' : '経費を記録';
+  document.getElementById('expense-form-subtitle').textContent = visitName ? ('📋 ' + visitName) : '';
+  document.getElementById('expense-form-error').textContent    = '';
+  renderExpPhotoGrid();
+
+  if (id) {
+    const ex = expenses.find(x => x.id === id);
+    if (ex) {
+      document.getElementById('ef-date').value   = ex.date   || '';
+      document.getElementById('ef-cat').value    = ex.cat    || '';
+      document.getElementById('ef-amount').value = ex.amount || '';
+      document.getElementById('ef-memo').value   = ex.memo   || '';
+      expPhotos = Array.isArray(ex.photos) ? [...ex.photos] : (ex.photo ? [ex.photo] : []);
+      renderExpPhotoGrid();
+      expenseVisitId = ex.visitId || null;
+    }
+  } else {
+    document.getElementById('ef-date').value   = todayStr();
+    document.getElementById('ef-cat').value    = '';
+    document.getElementById('ef-amount').value = '';
+    document.getElementById('ef-memo').value   = '';
+  }
+  showScreen('expense-form-screen');
+}
+function closeExpenseForm() { showScreen('main-screen'); renderList(); }
+
+function saveExpense() {
+  const date   = document.getElementById('ef-date').value.trim();
+  const cat    = document.getElementById('ef-cat').value.trim();
+  const amount = parseInt(document.getElementById('ef-amount').value.trim(), 10);
+  const memo   = document.getElementById('ef-memo').value.trim();
+  const photos = [...expPhotos];
+  const errEl  = document.getElementById('expense-form-error');
+  if (!date)             { errEl.textContent = '日付を入力してください'; return; }
+  if (!cat)              { errEl.textContent = 'カテゴリを入力してください'; return; }
+  if (!amount || amount < 1) { errEl.textContent = '金額を正しく入力してください'; return; }
+  errEl.textContent = '';
+  const record = { date, cat, amount, memo, photos, visitId: expenseVisitId };
+  if (editingExpenseId) {
+    const idx = expenses.findIndex(x => x.id === editingExpenseId);
+    if (idx >= 0) expenses[idx] = { ...expenses[idx], ...record };
+  } else {
+    expenses.push({ id: 'exp-' + Date.now(), ...record });
+  }
+  saveData();
+  showScreen('main-screen');
+  // 訪問に紐付いている場合はそのタブに戻る、単独なら経費タブへ
+  if (expenseVisitId) { renderList(); }
+  else { switchTab('expense'); }
+}
+
+function deleteExpense(id) {
+  if (!confirm('この経費記録を削除しますか？')) return;
+  expenses = expenses.filter(x => x.id !== id);
+  saveData(); renderList();
+}
+
+// 訪問カード内の経費を描画（renderList から呼ばれる）
+function renderVisitExpenses(visitId) {
+  const area = document.getElementById('exp-area-' + visitId);
+  if (!area) return;
+  const exps = expenses.filter(e => e.visitId === visitId);
+  if (exps.length === 0) { area.innerHTML = ''; return; }
+  const total = exps.reduce((s, e) => s + e.amount, 0);
+  area.innerHTML = `
+    <div style="background:#fff7ee;border-radius:10px;padding:10px 12px;margin-top:2px;">
+      <div style="font-size:11px;font-weight:700;color:#795548;margin-bottom:6px;">💸 経費 合計 ${fmtYen(total)}</div>
+      ${exps.map(ex => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0d8c0;">
+          <div>
+            <span style="font-size:12px;font-weight:600;color:#555;">${esc(ex.cat)}</span>
+            ${ex.memo ? `<span style="font-size:11px;color:#aaa;margin-left:4px;">${esc(ex.memo)}</span>` : ''}
+            ${ex.photos&&ex.photos.length>0 ? `<span style="font-size:10px;color:#aaa;margin-left:4px;">📷${ex.photos.length}</span>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:13px;font-weight:700;color:#795548;">${fmtYen(ex.amount)}</span>
+            <button onclick="openExpenseForm('${ex.id}')" style="font-size:10px;padding:3px 8px;background:#f5f5f3;color:#555;border:1px solid #ddd;border-radius:6px;cursor:pointer;">編集</button>
+            <button onclick="deleteExpense('${ex.id}')" style="font-size:10px;padding:3px 8px;background:#fff0f0;color:#c0392b;border:1px solid #f5c6cb;border-radius:6px;cursor:pointer;">削除</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderExpenseList(list) {
+  // 単独記録（visitId なし）の経費のみ表示
+  const solo = expenses.filter(e => !e.visitId);
+  solo.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  const tMonth   = thisMonthStr();
+  const allExps  = expenses; // 訪問紐付け含む全件で集計
+  const thisM    = allExps.filter(e => (e.date||'').startsWith(tMonth));
+  const totalAll = allExps.reduce((s,e) => s + e.amount, 0);
+  const totalThis= thisM.reduce((s,e) => s + e.amount, 0);
+
+  // カテゴリ別集計（全件・今月）
+  const catMap = {};
+  thisM.forEach(e => { catMap[e.cat] = (catMap[e.cat]||0) + e.amount; });
+  const catEntries = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+
+  let html = `
+    <div style="background:#795548;color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;">
+      <div style="font-size:12px;opacity:.8;margin-bottom:4px;">今月の経費合計（訪問分含む）</div>
+      <div style="font-size:24px;font-weight:700;">${fmtYen(totalThis)}</div>
+      <div style="font-size:11px;opacity:.7;margin-top:4px;">累計 ${fmtYen(totalAll)}</div>
+    </div>`;
+
+  if (catEntries.length > 1) {
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px;">';
+    catEntries.forEach(([cat, total]) => {
+      html += `<div style="background:#fff;border-radius:10px;border:1px solid #e8e8e6;padding:8px 10px;">
+        <div style="font-size:11px;color:#888;">${esc(cat)}</div>
+        <div style="font-size:13px;font-weight:700;color:#795548;">${fmtYen(total)}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (solo.length === 0) {
+    html += '<div class="empty-msg" style="color:#bbb;font-size:13px;">単独の経費記録はありません<br><span style="font-size:12px;">訪問カードから追加した経費は各訪問に表示されます</span></div>';
+  } else {
+    html += '<div style="font-size:12px;font-weight:700;color:#888;margin:8px 0 6px;padding-left:4px;">単独記録</div>';
+    html += solo.map(ex => `
+      <div style="background:#fff;border-radius:14px;border:1px solid #e8e8e6;border-left:4px solid #795548;padding:14px 16px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+          <div>
+            <div style="font-size:11px;color:#888;">${ex.date||''}</div>
+            <div style="font-size:14px;font-weight:600;">${esc(ex.cat)}</div>
+            ${ex.memo?`<div style="font-size:12px;color:#888;margin-top:2px;">📝 ${esc(ex.memo)}</div>`:''}
+            ${ex.photos&&ex.photos.length>0?`<div style="font-size:11px;color:#aaa;margin-top:2px;">📷 ${ex.photos.length}枚</div>`:''}
+          </div>
+          <div style="font-size:18px;font-weight:700;color:#795548;">${fmtYen(ex.amount)}</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <button class="btn-edit" onclick="openExpenseForm('${ex.id}')">✏️ 編集</button>
+          <button class="btn-del"  onclick="deleteExpense('${ex.id}')">🗑 削除</button>
+        </div>
+      </div>`).join('');
+  }
+  list.innerHTML = html;
+}
+
 // ===== 削除・トグル =====
 function deleteVisit(id) {
   if(!confirm('この訪問予定を削除しますか？'))return;
@@ -1166,7 +1416,7 @@ function setWeekStart(day) {
 }
 function clearAllData() {
   if(!confirm('すべてのデータを削除します。元に戻せません。よろしいですか？'))return;
-  visits=[]; advances=[]; rewards=[];
+  visits=[]; advances=[]; rewards=[]; expenses=[];
   saveData(); closeSettings();
 }
 
@@ -1245,14 +1495,17 @@ function renderDashboard() {
   const visitDone     = inCycleV.filter(v=>v.status===1).length;
   const rewardPlanned = inCycleR.reduce((s,r)=>s+r.amount,0) + inCycleV.filter(v=>v.reward!=null).reduce((s,v)=>s+v.reward,0);
   const rewardEarned  = inCycleR.filter(r=>r.status===1).reduce((s,r)=>s+r.amount,0) + inCycleV.filter(v=>v.status===1&&v.reward!=null).reduce((s,v)=>s+v.reward,0);
+  const inCycleE      = expenses.filter(e=>(e.date||'')>=cyc.start&&(e.date||'')<=cyc.end);
   const advTotal      = inCycleA.reduce((s,a)=>s+a.amount,0);
-  const balance       = rewardEarned - advTotal;
+  const expTotal      = inCycleE.reduce((s,e)=>s+e.amount,0);
+  const balance       = rewardEarned + expTotal - advTotal; // 経費は立替→上乗せ支払いのためプラス
 
   const summaryRows = [
     ['訪問予定', visitTotal + '件（訪問済 ' + visitDone + '件）'],
     ['予定報酬', fmtYen(rewardPlanned)],
     ['確定報酬', fmtYen(rewardEarned)],
     ['前払い請求', fmtYen(advTotal)],
+    ['経費合計', fmtYen(expTotal)],
     ['差引残高（支払見込）', (balance<0?'▲':'')+fmtYen(Math.abs(balance))],
     ['支払予定日', cyc.paydayDisp],
   ];
@@ -1471,8 +1724,13 @@ function exportCSV(type) {
 
 // ===== CSV インポート トリガー =====
 
-// ===== トライアル・ロック管理 =====
-const TRIAL_DAYS    = 14;
+// ===== サブスクリプション管理 =====
+// 仕様:
+//   初回登録から1日以内 → 全機能無料
+//   1日経過後          → 設定画面ロック
+//   パスワード解除後   → 翌月同日まで有効、期限切れで再ロック
+
+const TRIAL_DAYS    = 1;           // 無料期間（日数）
 const LOCK_PASSWORD = 'yotei2024'; // ← 配布前にここを変更
 
 function recordFirstVisit() {
@@ -1484,24 +1742,37 @@ function getFirstVisitDate() {
   const v = localStorage.getItem(KEY_FIRST_VISIT);
   return v ? new Date(v) : null;
 }
+
+// 無料トライアル期間内かどうか（初回登録から1日以内）
 function isInTrial() {
   const fv = getFirstVisitDate();
   if (!fv) return true;
   return (Date.now() - fv.getTime()) < TRIAL_DAYS * 86400000;
 }
-function isUnlockedThisMonth() {
-  const now = new Date();
-  const ym  = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  return settings.unlockYM === ym;
+
+// パスワード解除済みかつ有効期限内かどうか
+// settings.unlockExpiry に翌月同日の日付文字列 'YYYY-MM-DD' を保存
+function isUnlocked() {
+  if (!settings.unlockExpiry) return false;
+  const expiry = new Date(settings.unlockExpiry);
+  expiry.setHours(23, 59, 59, 999); // 期限日の末時刻まで有効
+  return Date.now() <= expiry.getTime();
 }
+
+// 設定画面のロックが必要かどうか
 function isLocked() {
-  return !isInTrial() && !isUnlockedThisMonth();
+  return !isInTrial() && !isUnlocked();
 }
-function trialRemainDays() {
+
+// 残りトライアル時間（時間単位）
+function trialRemainHours() {
   const fv = getFirstVisitDate();
-  if (!fv) return TRIAL_DAYS;
-  return Math.max(0, TRIAL_DAYS - Math.floor((Date.now() - fv.getTime()) / 86400000));
+  if (!fv) return TRIAL_DAYS * 24;
+  const remain = TRIAL_DAYS * 86400000 - (Date.now() - fv.getTime());
+  return Math.max(0, Math.ceil(remain / 3600000));
 }
+
+// メイン画面のトライアルバナー更新
 function updateTrialBanner() {
   let banner = document.getElementById('trial-banner');
   if (!banner) {
@@ -1511,25 +1782,28 @@ function updateTrialBanner() {
     if (wrap) wrap.insertBefore(banner, wrap.firstChild);
   }
   const fv = getFirstVisitDate();
-  if (!fv) { banner.style.display='none'; return; }
+  if (!fv) { banner.style.display = 'none'; return; }
+
   if (isInTrial()) {
-    const r = trialRemainDays();
+    const h = trialRemainHours();
     banner.className = 'trial-banner';
-    banner.innerHTML = '<strong>🎉 無料トライアル中</strong>残り <b>' + r + '日</b> — 全機能をご利用いただけます';
+    banner.innerHTML = '<strong>🎉 無料お試し中</strong>あと約 <b>' + h + '時間</b> — 全機能をご利用いただけます';
     banner.style.display = 'block';
-  } else if (isUnlockedThisMonth()) {
-    const now = new Date();
-    const last = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  } else if (isUnlocked()) {
+    const exp = new Date(settings.unlockExpiry);
+    const fmt = exp.getFullYear() + '/' + (exp.getMonth()+1) + '/' + exp.getDate();
     banner.className = 'trial-banner';
-    banner.innerHTML = '<strong>✅ 今月解除済み</strong>月末（' + last + '日）まで全機能をご利用いただけます';
+    banner.innerHTML = '<strong>✅ サブスク有効</strong>' + fmt + ' まで全機能をご利用いただけます';
     banner.style.display = 'block';
   } else {
     banner.className = 'trial-banner trial-expired';
-    banner.innerHTML = '<strong>🔒 トライアル期間が終了しました</strong>設定・報酬サマリーのご利用には月次パスワードが必要です。' +
-      '<button onclick="openExpiredLock()" style="margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700;background:#c0392b;color:#fff;border:none;border-radius:8px;cursor:pointer;">🔑 パスワードを入力して解除する</button>';
+    banner.innerHTML = '<strong>🔒 設定画面がロックされています</strong>' +
+      'サブスクリプションを購入すると設定画面が利用できます。<br>' +
+      '<button onclick="openExpiredLock()" style="margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700;background:#c0392b;color:#fff;border:none;border-radius:8px;cursor:pointer;">🔑 認証コードを入力して解除する</button>';
     banner.style.display = 'block';
   }
 }
+
 function openExpiredLock() { showLockScreen('settings'); }
 
 function showLockScreen(target) {
@@ -1542,11 +1816,12 @@ function showLockScreen(target) {
   if (existing) existing.remove();
 
   const now = new Date();
-  const ym  = now.getFullYear() + '年' + (now.getMonth()+1) + '月';
+  // 翌月同日を計算して表示
+  const expDate = new Date(now.getFullYear(), now.getMonth()+1, now.getDate());
+  const expFmt  = expDate.getFullYear() + '/' + (expDate.getMonth()+1) + '/' + expDate.getDate();
 
-  // クォート混在を避けてDOM直接生成
-  const ls    = document.createElement('div');
-  ls.id        = 'lock-screen';
+  const ls = document.createElement('div');
+  ls.id = 'lock-screen';
   ls.className = 'lock-screen';
 
   const inner = document.createElement('div');
@@ -1558,17 +1833,17 @@ function showLockScreen(target) {
 
   const title = document.createElement('div');
   title.className = 'lock-title';
-  title.textContent = 'パスワードが必要です';
+  title.textContent = 'サブスクリプション認証';
 
   const desc = document.createElement('div');
   desc.className = 'lock-desc';
-  desc.innerHTML = ym + 'のパスワードを入力すると<br>月末まで全機能をご利用いただけます。';
+  desc.innerHTML = '認証コードを入力すると<br><b>' + expFmt + '</b> まで設定画面を<br>ご利用いただけます。';
 
   const pwInput = document.createElement('input');
   pwInput.type        = 'password';
   pwInput.className   = 'lock-input';
   pwInput.id          = 'lock-pw-input';
-  pwInput.placeholder = 'パスワードを入力';
+  pwInput.placeholder = '認証コードを入力';
   pwInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') submitLockPassword(target);
   });
@@ -1598,27 +1873,33 @@ function showLockScreen(target) {
   document.body.appendChild(ls);
   setTimeout(() => { pwInput.focus(); }, 100);
 }
+
 function submitLockPassword(target) {
   const pw = document.getElementById('lock-pw-input').value;
   if (pw === LOCK_PASSWORD) {
-    const now = new Date();
-    settings.unlockYM = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    // 翌月同日を有効期限として保存
+    const now     = new Date();
+    const expDate = new Date(now.getFullYear(), now.getMonth()+1, now.getDate());
+    const expStr  = expDate.getFullYear() + '-' +
+                    String(expDate.getMonth()+1).padStart(2,'0') + '-' +
+                    String(expDate.getDate()).padStart(2,'0');
+    settings.unlockExpiry = expStr;
     saveData();
     closeLockScreen();
     updateTrialBanner();
     if (target === 'settings') openSettings();
     else switchTab('reward');
   } else {
-    document.getElementById('lock-error').textContent = 'パスワードが正しくありません';
+    document.getElementById('lock-error').textContent = '認証コードが正しくありません';
     document.getElementById('lock-pw-input').value = '';
     document.getElementById('lock-pw-input').focus();
   }
 }
+
 function closeLockScreen() {
   const ls = document.getElementById('lock-screen');
   if (ls) ls.remove();
 }
-
 
 // ===== アップデート通知 =====
 // アップデート内容メモ（バージョンごとに記述）
@@ -1902,6 +2183,8 @@ function renderList() {
       const cyc=getCycleRange(currentMonth);
       fr=rewards.filter(r=>r.date>=cyc.start && r.date<=cyc.end);
       fa=advances.filter(a=>(a.date||'').startsWith(currentMonth));
+    } else if (currentTab==='expense') {
+      fv=[];
     } else {
       fv=visits.filter(v=>v.status===1);
     }
@@ -1912,6 +2195,13 @@ function renderList() {
   fa.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   const list=document.getElementById('visit-list');
+
+  // 経費タブ表示
+  if (currentTab==='expense' && !isSearchMode) {
+    renderExpenseList(list);
+    updateStats();
+    return;
+  }
 
   if(currentTab==='reward' && !isSearchMode){
     if(fr.length===0&&fa.length===0){
@@ -1990,9 +2280,15 @@ function renderList() {
         <button class="btn-edit" onclick="openForm('${v.id}')">✏️ 編集</button>
         <button class="btn-del"  onclick="deleteVisit('${v.id}')">🗑 削除</button>
       </div>
+      <div id="exp-area-${v.id}" style="margin-top:6px;"></div>
+      <button style="width:100%;margin-top:6px;padding:8px;font-size:12px;font-weight:600;background:#fff7ee;color:#795548;border:1px solid #d7b899;border-radius:8px;cursor:pointer;" onclick="openExpenseForm(null,'${v.id}','${esc(v.name)}')">💸 経費を追加</button>
     </div>`;
   }).join('');
   updateStats();
+  // 訪問カードの経費エリアを描画
+  setTimeout(() => {
+    fv.forEach(v => renderVisitExpenses(v.id));
+  }, 0);
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
