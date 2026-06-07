@@ -1415,6 +1415,11 @@ function openSettings() {
   document.getElementById('s-closing-day').value = settings.closingDay;
   document.getElementById('s-pay-day').value     = settings.payDay;
   updateCyclePreview();
+  // 月・年ラベルを現在値に同期
+  const dlEl = document.getElementById('dash-month-label');
+  if (dlEl) { const [y,m] = dashMonth.split('-'); dlEl.textContent = y + '年 ' + parseInt(m) + '月'; }
+  const alEl = document.getElementById('annual-year-label');
+  if (alEl) alEl.textContent = annualYear + '年';
   showScreen('settings-screen');
 }
 function closeSettings() { showScreen('main-screen'); renderList(); updateStats(); }
@@ -1439,6 +1444,9 @@ let annualYear = new Date().getFullYear();
 function annualChangeYear(delta) {
   annualYear += delta;
   document.getElementById('annual-year-label').textContent = annualYear + '年';
+  // スライド即時反映
+  const wrap = document.getElementById('annual-wrap');
+  if (wrap && wrap.innerHTML.trim() !== '') renderAnnualData();
 }
 
 function renderAnnualData() {
@@ -1574,6 +1582,9 @@ function dashChangeMonth(delta) {
   dashMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
   const [y2,m2] = dashMonth.split('-');
   document.getElementById('dash-month-label').textContent = y2 + '年 ' + parseInt(m2) + '月';
+  // スライド即時反映
+  const wrap = document.getElementById('dashboard-wrap');
+  if (wrap && wrap.innerHTML.trim() !== '') renderDashboard();
 }
 
 function makeTbl(headers, rows, emptyMsg) {
