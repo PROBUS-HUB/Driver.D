@@ -223,6 +223,76 @@ textarea.form-input { resize:none; line-height:1.6; }
 /* PWAヒント */
 .pwa-hint { background:#fff; border-radius:12px; border:1px solid #e8e8e6; padding:12px 14px; margin-bottom:12px; font-size:12px; color:#888; line-height:1.6; }
 .pwa-hint strong { color:#1a1a1a; }
+
+
+
+.plan-badge { display:inline-block; font-size:11px; font-weight:700; border-radius:20px; padding:3px 10px; margin-left:6px; vertical-align:middle; }
+.plan-badge.free { background:#f0f0f0; color:#888; }
+.plan-badge.paid { background:#f0c040; color:#7a5800; }
+.locked-overlay { position:relative; }
+.locked-overlay::after {
+  content:'🔒 有料プランで利用できます';
+  position:absolute; inset:0;
+  background:rgba(245,245,243,.92);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:#888;
+  border-radius:14px; pointer-events:none;
+}
+.lock-btn-wrap { margin-top:10px; }
+
+
+/* ===== トライアル・ロック UI ===== */
+.trial-banner { background:#fff8e1; border:1px solid #ffe082; border-radius:12px; padding:12px 14px; margin-bottom:10px; font-size:12px; color:#7a5800; line-height:1.7; }
+.trial-banner strong { font-size:13px; display:block; margin-bottom:2px; }
+.trial-expired { background:#fff0f0; border-color:#ffcdd2; color:#c0392b; }
+.lock-screen { position:fixed; inset:0; background:rgba(26,26,26,.97); z-index:9000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; }
+.lock-screen-inner { width:100%; max-width:400px; text-align:center; }
+.lock-icon { font-size:56px; margin-bottom:16px; }
+.lock-title { font-size:20px; font-weight:700; color:#fff; margin-bottom:8px; }
+.lock-desc { font-size:13px; color:#aaa; line-height:1.8; margin-bottom:24px; }
+.lock-input { width:100%; padding:14px 16px; font-size:16px; border:1px solid #555; border-radius:12px; background:#2a2a2a; color:#fff; text-align:center; letter-spacing:.1em; outline:none; margin-bottom:10px; }
+.lock-input:focus { border-color:#f0c040; }
+.lock-submit { width:100%; padding:14px; font-size:15px; font-weight:700; background:#f0c040; color:#7a5800; border:none; border-radius:12px; cursor:pointer; margin-bottom:10px; }
+.lock-error { font-size:12px; color:#e74c3c; min-height:18px; margin-bottom:8px; }
+.lock-close { font-size:13px; color:#666; background:none; border:none; cursor:pointer; padding:8px; }
+
+/* ===== モバイル最適化 ===== */
+@media (max-width: 360px) {
+  .stats { grid-template-columns: repeat(5,1fr); gap:2px; }
+  .stat-card { padding:8px 2px; }
+  .stat-num { font-size:14px; }
+  .stat-label { font-size:9px; }
+  .tabs { grid-template-columns: repeat(3,1fr); gap:3px; }
+  .tab-btn { font-size:10px; padding:8px 2px; }
+  .wrap { padding:10px; }
+}
+
+/* GitHub Pages / iframe 埋め込み対応 */
+html, body { -webkit-overflow-scrolling: touch; overflow-x: hidden; }
+input, button, textarea, select {
+  font-size: 16px !important; /* iOS自動ズーム防止 */
+  -webkit-appearance: none;
+  border-radius: 10px;
+}
+input[type="number"], input[type="tel"], input[type="date"],
+input[type="datetime-local"], input[type="search"] {
+  font-size: 16px !important;
+}
+.btn-primary, .btn-green, .btn-orange, .btn-map-full,
+.btn-map, .btn-edit, .btn-del, .status-btn, .tab-btn,
+.month-nav, .wd-btn, .map-filter-btn, .btn-zip-search,
+.btn-search-clear, .map-pin-open, .status-badge {
+  -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+/* ダウンロードリンク（モバイルで長押し保存しやすく） */
+#csv-dl-link {
+  display: block;
+  padding: 14px 16px;
+  font-size: 15px;
+  word-break: break-all;
+}
 </style>
 </head>
 <body>
@@ -235,7 +305,7 @@ textarea.form-input { resize:none; line-height:1.6; }
       <span class="header-date" id="header-date"></span>
       <button class="btn-settings" onclick="openMapScreen()" title="マップ">🗺️</button>
       <button class="btn-settings" onclick="toggleSearch()" title="検索">🔍</button>
-      <button class="btn-settings" onclick="openSettings()" title="設定">⚙️</button>
+      <button class="btn-settings" onclick="openSettingsWithLock()" title="設定">⚙️</button>
     </div>
   </div>
   <div class="wrap">
@@ -286,7 +356,7 @@ textarea.form-input { resize:none; line-height:1.6; }
       <button class="tab-btn"        id="tab-tomorrow" onclick="switchTab('tomorrow')">翌日</button>
       <button class="tab-btn"        id="tab-dayafter" onclick="switchTab('dayafter')">翌々日</button>
       <button class="tab-btn"        id="tab-month"    onclick="switchTab('month')">月別</button>
-      <button class="tab-btn reward-tab" id="tab-reward" onclick="switchTab('reward')">💰報酬</button>
+      <button class="tab-btn reward-tab" id="tab-reward" onclick="switchTabWithLock('reward')">💰報酬</button>
     </div>
 
     <div class="month-selector" id="month-selector">
@@ -488,6 +558,54 @@ textarea.form-input { resize:none; line-height:1.6; }
         <button class="wd-btn" id="wdbtn-6" onclick="setWeekStart(6)">土曜日</button>
       </div>
     </div>
+    <!-- CSV エクスポート -->
+    <div class="card">
+      <p class="card-label">CSVエクスポート</p>
+      <p style="font-size:12px;color:#aaa;margin-bottom:12px;">訪問予定・報酬・前払い請求のデータをCSVファイルとしてダウンロードします。Excelで開いて確認したり、バックアップとして保存できます。</p>
+      <button class="btn-primary" style="background:#2980b9;margin-bottom:8px;" onclick="exportCSV('visits')">📋 訪問予定をエクスポート</button>
+      <button class="btn-primary" style="background:#27ae60;margin-bottom:8px;" onclick="exportCSV('rewards')">💰 報酬データをエクスポート</button>
+      <button class="btn-primary" style="background:#e67e22;margin-bottom:8px;" onclick="exportCSV('advances')">💸 前払い請求をエクスポート</button>
+      <div id="csv-dl-wrap"></div>
+      <p style="font-size:11px;color:#aaa;margin-top:4px;">ボタンを押すとダウンロードリンクが表示されます。リンクを長押し（またはタップ）して保存してください。</p>
+    </div>
+
+    <!-- CSV インポート -->
+    <div class="card">
+      <p class="card-label">CSVインポート</p>
+      <p style="font-size:12px;color:#aaa;margin-bottom:8px;">エクスポートしたCSVファイルを読み込んでデータを復元します。同じIDのデータは上書きされます。新しいIDのデータは追加されます。</p>
+      <input type="file" id="csv-import-file" accept=".csv" style="display:none;" onchange="importCSV(this)" />
+      <button class="btn-primary" style="background:#555;margin-bottom:0;" onclick="triggerImport()">📂 CSVファイルを選択してインポート</button>
+      <p id="csv-import-status" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
+    </div>
+
+    <!-- 総合ダッシュボード -->
+    <div class="card">
+      <p class="card-label">総合データ一覧</p>
+      <p style="font-size:12px;color:#aaa;margin-bottom:10px;">月別サマリーと全データの明細をまとめて確認できます</p>
+
+      <!-- 月選択 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:#f5f5f3;border-radius:10px;padding:8px 12px;margin-bottom:10px;">
+        <button onclick="dashChangeMonth(-1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:#1a1a1a;padding:2px 8px;">‹</button>
+        <span id="dash-month-label" style="font-size:14px;font-weight:700;"></span>
+        <button onclick="dashChangeMonth(1)"  style="background:none;border:none;font-size:20px;cursor:pointer;color:#1a1a1a;padding:2px 8px;">›</button>
+      </div>
+
+      <button onclick="renderDashboard()" style="width:100%;padding:10px;font-size:14px;font-weight:600;background:#1a1a1a;color:#fff;border:none;border-radius:10px;cursor:pointer;margin-bottom:12px;">🔄 表示する</button>
+
+      <div id="dashboard-wrap"></div>
+    </div>
+
+    <!-- JSONバックアップ -->
+    <div class="card">
+      <p class="card-label">全データ バックアップ／復元（JSON）</p>
+      <p style="font-size:12px;color:#aaa;margin-bottom:10px;">訪問・報酬・前払い・設定を含む全データをまとめてバックアップ・復元できます</p>
+      <button class="btn-primary" style="background:#555;margin-bottom:8px;" onclick="exportJSON()">💾 全データをバックアップ（コピー）</button>
+      <div id="json-export-wrap"></div>
+      <textarea id="json-import-area" class="form-input" rows="4" placeholder="バックアップしたJSONをここに貼り付け..." style="margin-top:10px;font-size:12px;font-family:monospace;"></textarea>
+      <button class="btn-primary" style="background:#2980b9;margin-top:8px;margin-bottom:0;" onclick="importJSON()">📂 貼り付けたJSONから復元</button>
+      <p id="json-import-status" style="font-size:12px;margin-top:8px;min-height:16px;"></p>
+    </div>
+
     <div class="card" style="background:#f9f9f8;">
       <p class="card-label">データ管理</p>
       <button class="btn-primary" style="margin-bottom:0;background:#c0392b;" onclick="clearAllData()">すべてのデータを削除</button>
@@ -501,12 +619,13 @@ const KEY_VISITS   = 'dorakuru_visits';
 const KEY_ADVANCES = 'dorakuru_advances';
 const KEY_REWARDS  = 'dorakuru_rewards';
 const KEY_SETTINGS = 'dorakuru_settings';
+const KEY_FIRST_VISIT = 'dorakuru_first_visit'; // 最初の訪問登録日時（ISO文字列）
 
 let visits   = [];
 let advances = [];
 let rewards  = [];
 // ★ closingDay・payDay を settings に追加（デフォルト15日締め・27日払い）
-let settings = { weekStart: 1, closingDay: 15, payDay: 27 };
+let settings = { weekStart: 1, closingDay: 15, payDay: 27, unlockYM: '' }; // unlockYM: 'YYYY-MM' 形式で解除済み月を保存
 
 let editingVisitId   = null;
 let searchQuery = '';
@@ -529,7 +648,7 @@ function loadData() {
   try { rewards  = JSON.parse(localStorage.getItem(KEY_REWARDS)  || '[]'); } catch(e) { rewards=[]; }
   try {
     // ★ closingDay・payDay もマージ（既存データとの後方互換）
-    settings = { weekStart:1, closingDay:15, payDay:27, ...JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}') };
+    settings = { weekStart:1, closingDay:15, payDay:27, unlockYM:'', ...JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}') };
   } catch(e) {}
 }
 function saveData() {
@@ -627,6 +746,15 @@ function showScreen(name) {
   window.scrollTo(0,0);
 }
 
+// ===== タブ切替（ロックチェック付き）=====
+function switchTabWithLock(tab) {
+  if (tab === 'reward' && isLocked()) {
+    showLockScreen('reward');
+    return;
+  }
+  switchTab(tab);
+}
+
 // ===== タブ切替 =====
 function switchTab(tab) {
   currentTab = tab;
@@ -654,6 +782,12 @@ function changeMonth(delta) {
   const d = new Date(y, m-1+delta, 1);
   currentMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   updateMonthLabel();
+  // ダッシュボード月ラベル初期化
+  const dashLabelEl = document.getElementById('dash-month-label');
+  if (dashLabelEl) {
+    const [dy,dm] = dashMonth.split('-');
+    dashLabelEl.textContent = dy + '年 ' + parseInt(dm) + '月';
+  }
   renderList();
   updateStats();
 }
@@ -884,7 +1018,8 @@ function saveVisit() {
     visits.push({id:Date.now().toString(),customId,zipcode,datetime,name,address,tel,memo,
       reward,status:selectedStatus,photos});
   }
-  saveData(); showScreen('main-screen'); renderList(); updateStats();
+  if (visits.length === 1) recordFirstVisit(); // 初回登録時にトライアル開始日を記録
+  saveData(); showScreen('main-screen'); renderList(); updateStats(); updateTrialBanner();
 }
 
 // ===== 報酬フォーム =====
@@ -999,6 +1134,10 @@ function openMapFromInput() {
 }
 
 // ===== 設定 =====
+function openSettingsWithLock() {
+  if (isLocked()) { showLockScreen('settings'); return; }
+  openSettings();
+}
 function openSettings() {
   // 週起算日ボタン
   [0,1,6].forEach(d => {
@@ -1024,6 +1163,609 @@ function clearAllData() {
   if(!confirm('すべてのデータを削除します。元に戻せません。よろしいですか？'))return;
   visits=[]; advances=[]; rewards=[];
   saveData(); closeSettings();
+}
+
+// ===== 総合ダッシュボード =====
+let dashMonth = (() => {
+  const n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0');
+})();
+
+function dashChangeMonth(delta) {
+  const [y,m] = dashMonth.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  dashMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  const [y2,m2] = dashMonth.split('-');
+  document.getElementById('dash-month-label').textContent = y2 + '年 ' + parseInt(m2) + '月';
+}
+
+function makeTbl(headers, rows, emptyMsg) {
+  if (rows.length === 0) {
+    const p = document.createElement('p');
+    p.style.cssText = 'font-size:12px;color:#aaa;padding:8px 0;';
+    p.textContent = emptyMsg || 'データがありません';
+    return p;
+  }
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:4px;';
+  const tbl = document.createElement('table');
+  tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:11px;min-width:320px;';
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  headers.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    th.style.cssText = 'background:#333;color:#fff;padding:7px 8px;text-align:left;white-space:nowrap;font-weight:600;';
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh); tbl.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  rows.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.style.background = i%2===0?'#fff':'#f9f9f8';
+    row.forEach((cell, ci) => {
+      const td = document.createElement('td');
+      td.textContent = cell;
+      td.style.cssText = 'padding:7px 8px;border-bottom:1px solid #f0f0f0;white-space:nowrap;color:#333;';
+      if (ci === row.length-1 && String(cell).startsWith('¥')) td.style.color='#27ae60';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody); wrap.appendChild(tbl);
+  return wrap;
+}
+
+function renderDashboard() {
+  const wrap = document.getElementById('dashboard-wrap');
+  wrap.innerHTML = '';
+
+  const cyc = getCycleRange(dashMonth);
+  const [y, m] = dashMonth.split('-');
+
+  // ---- 月別集計サマリー ----
+  const secSummary = document.createElement('div');
+  secSummary.style.cssText = 'background:#1a1a1a;color:#fff;border-radius:10px;padding:12px 14px;margin-bottom:14px;';
+
+  const sumTitle = document.createElement('p');
+  sumTitle.style.cssText = 'font-size:13px;font-weight:700;margin-bottom:8px;';
+  sumTitle.textContent = '📊 ' + parseInt(m) + '月 集計サマリー（' + cyc.startDisp + ' 〜 ' + cyc.endDisp + '）';
+  secSummary.appendChild(sumTitle);
+
+  const inCycleV = visits.filter(v => { const d=toDateStr(v.datetime); return d>=cyc.start&&d<=cyc.end; });
+  const inCycleR = rewards.filter(r => r.date>=cyc.start&&r.date<=cyc.end);
+  const inCycleA = advances.filter(a => (a.date||'').startsWith(dashMonth));
+
+  const visitTotal    = inCycleV.length;
+  const visitDone     = inCycleV.filter(v=>v.status===1).length;
+  const rewardPlanned = inCycleR.reduce((s,r)=>s+r.amount,0) + inCycleV.filter(v=>v.reward!=null).reduce((s,v)=>s+v.reward,0);
+  const rewardEarned  = inCycleR.filter(r=>r.status===1).reduce((s,r)=>s+r.amount,0) + inCycleV.filter(v=>v.status===1&&v.reward!=null).reduce((s,v)=>s+v.reward,0);
+  const advTotal      = inCycleA.reduce((s,a)=>s+a.amount,0);
+  const balance       = rewardEarned - advTotal;
+
+  const summaryRows = [
+    ['訪問予定', visitTotal + '件（訪問済 ' + visitDone + '件）'],
+    ['予定報酬', fmtYen(rewardPlanned)],
+    ['確定報酬', fmtYen(rewardEarned)],
+    ['前払い請求', fmtYen(advTotal)],
+    ['差引残高（支払見込）', (balance<0?'▲':'')+fmtYen(Math.abs(balance))],
+    ['支払予定日', cyc.paydayDisp],
+  ];
+  summaryRows.forEach(([label, val]) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #333;';
+    const l = document.createElement('span'); l.textContent=label; l.style.cssText='font-size:12px;color:#ccc;';
+    const v = document.createElement('span'); v.textContent=val;   v.style.cssText='font-size:13px;font-weight:700;color:#fff;';
+    row.appendChild(l); row.appendChild(v);
+    secSummary.appendChild(row);
+  });
+  wrap.appendChild(secSummary);
+
+  // ---- 訪問予定明細 ----
+  const secLabel1 = document.createElement('p');
+  secLabel1.style.cssText = 'font-size:12px;font-weight:700;color:#555;margin:10px 0 6px;letter-spacing:.05em;';
+  secLabel1.textContent = '📋 訪問予定（' + parseInt(m) + '月サイクル ' + inCycleV.length + '件）';
+  wrap.appendChild(secLabel1);
+  wrap.appendChild(makeTbl(
+    ['日時','お客様名','ステータス','報酬'],
+    inCycleV.sort((a,b)=>(a.datetime||'').localeCompare(b.datetime||'')).map(v=>[
+      formatDT(v.datetime),
+      (v.customId?'['+v.customId+'] ':'')+(v.name||''),
+      v.status===1?'✓訪問済':'未訪問',
+      v.reward!=null?fmtYen(v.reward):'—'
+    ]),
+    'この期間の訪問予定はありません'
+  ));
+
+  // ---- 報酬明細 ----
+  const secLabel2 = document.createElement('p');
+  secLabel2.style.cssText = 'font-size:12px;font-weight:700;color:#555;margin:14px 0 6px;letter-spacing:.05em;';
+  secLabel2.textContent = '💰 報酬（' + inCycleR.length + '件）';
+  wrap.appendChild(secLabel2);
+  wrap.appendChild(makeTbl(
+    ['日付','件名','金額','状態'],
+    inCycleR.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(r=>[
+      r.date||'—', r.name||'—', fmtYen(r.amount), r.status===1?'✓確定済':'未確定'
+    ]),
+    'この期間の報酬記録はありません'
+  ));
+
+  // ---- 前払い請求明細 ----
+  const secLabel3 = document.createElement('p');
+  secLabel3.style.cssText = 'font-size:12px;font-weight:700;color:#555;margin:14px 0 6px;letter-spacing:.05em;';
+  secLabel3.textContent = '💸 前払い請求（' + inCycleA.length + '件）';
+  wrap.appendChild(secLabel3);
+  wrap.appendChild(makeTbl(
+    ['日付','金額','メモ'],
+    inCycleA.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(a=>[
+      a.date||'—', fmtYen(a.amount), a.memo||'—'
+    ]),
+    'この期間の前払い請求はありません'
+  ));
+
+  const hint = document.createElement('p');
+  hint.style.cssText = 'font-size:11px;color:#aaa;margin-top:10px;';
+  hint.textContent = '← 各テーブルは横にスクロールできます';
+  wrap.appendChild(hint);
+
+  wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ===== JSON バックアップ =====
+function exportJSON() {
+  const backup = { version:1, exportedAt:new Date().toISOString(), visits, rewards, advances, settings };
+  const jsonStr = JSON.stringify(backup, null, 2);
+  const wrap = document.getElementById('json-export-wrap');
+  wrap.innerHTML = '';
+  const ta = document.createElement('textarea');
+  ta.value = jsonStr;
+  ta.readOnly = true;
+  ta.style.cssText = 'width:100%;height:120px;font-size:11px;font-family:monospace;border:1px solid #ddd;border-radius:8px;padding:8px;background:#f9f9f8;color:#333;resize:none;display:block;margin-top:4px;';
+  wrap.appendChild(ta);
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = '📋 全てコピーする';
+  copyBtn.style.cssText = 'width:100%;margin-top:8px;padding:12px;font-size:14px;font-weight:600;background:#1a1a1a;color:#fff;border:none;border-radius:10px;cursor:pointer;';
+  copyBtn.onclick = () => {
+    ta.select(); ta.setSelectionRange(0, 99999);
+    const done = () => { copyBtn.textContent='✅ コピーしました！'; copyBtn.style.background='#27ae60'; setTimeout(()=>{copyBtn.textContent='📋 全てコピーする';copyBtn.style.background='#1a1a1a';},2500); };
+    try { document.execCommand('copy'); done(); }
+    catch(e) { navigator.clipboard && navigator.clipboard.writeText(ta.value).then(done); }
+  };
+  wrap.appendChild(copyBtn);
+  const hint = document.createElement('p');
+  hint.style.cssText = 'font-size:11px;color:#aaa;margin-top:6px;';
+  hint.textContent = 'コピーしたJSONをメモ帳などに保存しておくと復元できます';
+  wrap.appendChild(hint);
+  wrap.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+// ===== JSON 復元 =====
+function importJSON() {
+  const statusEl = document.getElementById('json-import-status');
+  const text = document.getElementById('json-import-area').value.trim();
+  if (!text) { statusEl.style.color='#c0392b'; statusEl.textContent='JSONを貼り付けてください'; return; }
+  try {
+    const backup = JSON.parse(text);
+    if (!backup.visits && !backup.rewards && !backup.advances) {
+      statusEl.style.color='#c0392b'; statusEl.textContent='有効なバックアップデータではありません'; return;
+    }
+    if (!confirm('現在のデータにインポートします。同じIDのデータは上書きされます。よろしいですか？')) return;
+    let added=0, updated=0;
+    const merge = (target, src) => { (src||[]).forEach(item => { const idx=target.findIndex(x=>x.id===item.id); if(idx>=0){target[idx]={...target[idx],...item};updated++;}else{target.push(item);added++;} }); };
+    merge(visits, backup.visits); merge(rewards, backup.rewards); merge(advances, backup.advances);
+    if (backup.settings) settings = { ...settings, ...backup.settings };
+    saveData(); renderList(); updateStats();
+    document.getElementById('json-import-area').value = '';
+    statusEl.style.color='#27ae60';
+    statusEl.textContent=`復元完了：新規 ${added}件 追加、${updated}件 更新`;
+  } catch(e) {
+    statusEl.style.color='#c0392b';
+    statusEl.textContent='JSONの読み込みに失敗しました。内容を確認してください';
+  }
+}
+
+// ===== CSV エクスポート =====
+function exportCSV(type) {
+  let rows = [], filename = '';
+  const now = new Date();
+  const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+
+  if (type === 'visits') {
+    filename = `訪問予定_${stamp}.csv`;
+    rows.push(['管理ID','カスタムID','郵便番号','訪問日時','お客様名','住所','電話番号','メモ','報酬金額','ステータス(0=未訪問/1=訪問済)']);
+    visits.forEach(v => rows.push([
+      v.id||'', v.customId||'', v.zipcode||'', v.datetime||'',
+      v.name||'', v.address||'', v.tel||'', v.memo||'',
+      v.reward!=null?v.reward:'', v.status||0
+    ]));
+  } else if (type === 'rewards') {
+    filename = `報酬データ_${stamp}.csv`;
+    rows.push(['管理ID','報酬発生日','お客様名・件名','報酬金額','ステータス(0=未確定/1=確定済)','メモ']);
+    rewards.forEach(r => rows.push([
+      r.id||'', r.date||'', r.name||'', r.amount||'', r.status!=null?r.status:1, r.memo||''
+    ]));
+  } else if (type === 'advances') {
+    filename = `前払い請求_${stamp}.csv`;
+    rows.push(['管理ID','請求日','請求金額','メモ']);
+    advances.forEach(a => rows.push([
+      a.id||'', a.date||'', a.amount||'', a.memo||''
+    ]));
+  }
+
+  if (rows.length <= 1) { alert('エクスポートするデータがありません'); return; }
+
+  const csvStr = rows.map(row =>
+    row.map(cell => {
+      const s = String(cell);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }).join(',')
+  ).join('\r\n');
+
+  const bom = '\uFEFF';
+  const csvContent = bom + csvStr;
+
+  // 既存表示をクリア
+  const wrap = document.getElementById('csv-dl-wrap');
+  wrap.innerHTML = '';
+
+  // iPhone・GitHub Pages 環境を問わず確実に動く方式：
+  // テキストエリアにCSV内容を表示 → コピーボタンで全選択コピー
+  // ファイル名表示
+  const nameLabel = document.createElement('p');
+  nameLabel.style.cssText = 'font-size:13px;font-weight:700;color:#1a1a1a;margin-top:12px;margin-bottom:6px;';
+  nameLabel.textContent = '📄 ' + filename;
+  wrap.appendChild(nameLabel);
+
+  // テキストエリア
+  const ta = document.createElement('textarea');
+  ta.id = 'csv-dl-link';
+  ta.value = csvContent;
+  ta.readOnly = true;
+  ta.style.cssText = 'width:100%;height:160px;font-size:11px;font-family:monospace;border:1px solid #ddd;border-radius:8px;padding:8px;background:#f9f9f8;color:#333;resize:none;display:block;';
+  wrap.appendChild(ta);
+
+  // コピーボタン
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = '📋 全てコピーする';
+  copyBtn.style.cssText = 'width:100%;margin-top:8px;padding:12px;font-size:14px;font-weight:600;background:#1a1a1a;color:#fff;border:none;border-radius:10px;cursor:pointer;';
+  copyBtn.onclick = () => {
+    ta.select();
+    ta.setSelectionRange(0, 99999); // iOS対応
+    try {
+      document.execCommand('copy');
+      copyBtn.textContent = '✅ コピーしました！';
+      copyBtn.style.background = '#27ae60';
+      setTimeout(() => {
+        copyBtn.textContent = '📋 全てコピーする';
+        copyBtn.style.background = '#1a1a1a';
+      }, 2000);
+    } catch(e) {
+      navigator.clipboard.writeText(ta.value).then(() => {
+        copyBtn.textContent = '✅ コピーしました！';
+        copyBtn.style.background = '#27ae60';
+        setTimeout(() => {
+          copyBtn.textContent = '📋 全てコピーする';
+          copyBtn.style.background = '#1a1a1a';
+        }, 2000);
+      });
+    }
+  };
+  wrap.appendChild(copyBtn);
+
+  // 使い方ヒント
+  const hint = document.createElement('p');
+  hint.style.cssText = 'font-size:11px;color:#aaa;margin-top:8px;line-height:1.7;';
+  hint.innerHTML = '「全てコピーする」→ メモ帳・Numbers・Excelに貼り付け → ファイル名を <strong>' + filename + '</strong> にして保存';
+  wrap.appendChild(hint);
+
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ===== CSV インポート トリガー =====
+
+// ===== トライアル・ロック管理 =====
+const TRIAL_DAYS    = 14;
+const LOCK_PASSWORD = 'yotei2024'; // ← 配布前にここを変更
+
+function recordFirstVisit() {
+  if (!localStorage.getItem(KEY_FIRST_VISIT)) {
+    localStorage.setItem(KEY_FIRST_VISIT, new Date().toISOString());
+  }
+}
+function getFirstVisitDate() {
+  const v = localStorage.getItem(KEY_FIRST_VISIT);
+  return v ? new Date(v) : null;
+}
+function isInTrial() {
+  const fv = getFirstVisitDate();
+  if (!fv) return true;
+  return (Date.now() - fv.getTime()) < TRIAL_DAYS * 86400000;
+}
+function isUnlockedThisMonth() {
+  const now = new Date();
+  const ym  = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  return settings.unlockYM === ym;
+}
+function isLocked() {
+  return !isInTrial() && !isUnlockedThisMonth();
+}
+function trialRemainDays() {
+  const fv = getFirstVisitDate();
+  if (!fv) return TRIAL_DAYS;
+  return Math.max(0, TRIAL_DAYS - Math.floor((Date.now() - fv.getTime()) / 86400000));
+}
+function updateTrialBanner() {
+  let banner = document.getElementById('trial-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'trial-banner';
+    const wrap = document.querySelector('#main-screen .wrap');
+    if (wrap) wrap.insertBefore(banner, wrap.firstChild);
+  }
+  const fv = getFirstVisitDate();
+  if (!fv) { banner.style.display='none'; return; }
+  if (isInTrial()) {
+    const r = trialRemainDays();
+    banner.className = 'trial-banner';
+    banner.innerHTML = '<strong>🎉 無料トライアル中</strong>残り <b>' + r + '日</b> — 全機能をご利用いただけます';
+    banner.style.display = 'block';
+  } else if (isUnlockedThisMonth()) {
+    const now = new Date();
+    const last = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    banner.className = 'trial-banner';
+    banner.innerHTML = '<strong>✅ 今月解除済み</strong>月末（' + last + '日）まで全機能をご利用いただけます';
+    banner.style.display = 'block';
+  } else {
+    banner.className = 'trial-banner trial-expired';
+    banner.innerHTML = '<strong>🔒 トライアル期間が終了しました</strong>設定・報酬サマリーのご利用には月次パスワードが必要です。' +
+      '<button onclick="openExpiredLock()" style="margin-top:8px;width:100%;padding:10px;font-size:13px;font-weight:700;background:#c0392b;color:#fff;border:none;border-radius:8px;cursor:pointer;">🔑 パスワードを入力して解除する</button>';
+    banner.style.display = 'block';
+  }
+}
+function openExpiredLock() { showLockScreen('settings'); }
+
+function showLockScreen(target) {
+  if (!isLocked()) {
+    if (target === 'settings') openSettings();
+    else switchTab('reward');
+    return;
+  }
+  const existing = document.getElementById('lock-screen');
+  if (existing) existing.remove();
+
+  const now = new Date();
+  const ym  = now.getFullYear() + '年' + (now.getMonth()+1) + '月';
+
+  // クォート混在を避けてDOM直接生成
+  const ls    = document.createElement('div');
+  ls.id        = 'lock-screen';
+  ls.className = 'lock-screen';
+
+  const inner = document.createElement('div');
+  inner.className = 'lock-screen-inner';
+
+  const icon = document.createElement('div');
+  icon.className = 'lock-icon';
+  icon.textContent = '🔒';
+
+  const title = document.createElement('div');
+  title.className = 'lock-title';
+  title.textContent = 'パスワードが必要です';
+
+  const desc = document.createElement('div');
+  desc.className = 'lock-desc';
+  desc.innerHTML = ym + 'のパスワードを入力すると<br>月末まで全機能をご利用いただけます。';
+
+  const pwInput = document.createElement('input');
+  pwInput.type        = 'password';
+  pwInput.className   = 'lock-input';
+  pwInput.id          = 'lock-pw-input';
+  pwInput.placeholder = 'パスワードを入力';
+  pwInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitLockPassword(target);
+  });
+
+  const errEl = document.createElement('div');
+  errEl.className = 'lock-error';
+  errEl.id        = 'lock-error';
+
+  const submitBtn = document.createElement('button');
+  submitBtn.className   = 'lock-submit';
+  submitBtn.textContent = '解除する';
+  submitBtn.onclick     = function() { submitLockPassword(target); };
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className   = 'lock-close';
+  closeBtn.textContent = 'キャンセル';
+  closeBtn.onclick     = closeLockScreen;
+
+  inner.appendChild(icon);
+  inner.appendChild(title);
+  inner.appendChild(desc);
+  inner.appendChild(pwInput);
+  inner.appendChild(errEl);
+  inner.appendChild(submitBtn);
+  inner.appendChild(closeBtn);
+  ls.appendChild(inner);
+  document.body.appendChild(ls);
+  setTimeout(() => { pwInput.focus(); }, 100);
+}
+function submitLockPassword(target) {
+  const pw = document.getElementById('lock-pw-input').value;
+  if (pw === LOCK_PASSWORD) {
+    const now = new Date();
+    settings.unlockYM = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    saveData();
+    closeLockScreen();
+    updateTrialBanner();
+    if (target === 'settings') openSettings();
+    else switchTab('reward');
+  } else {
+    document.getElementById('lock-error').textContent = 'パスワードが正しくありません';
+    document.getElementById('lock-pw-input').value = '';
+    document.getElementById('lock-pw-input').focus();
+  }
+}
+function closeLockScreen() {
+  const ls = document.getElementById('lock-screen');
+  if (ls) ls.remove();
+}
+
+function triggerImport() {
+  // iframeやSites埋め込み環境でも確実にファイル選択ダイアログを開く
+  const el = document.getElementById('csv-import-file');
+  el.value = '';
+  try {
+    el.click();
+  } catch(e) {
+    // フォールバック：一時的に body に追加してクリック
+    document.body.appendChild(el);
+    el.click();
+  }
+}
+
+// ===== CSV インポート =====
+function importCSV(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  input.value = '';
+  const statusEl = document.getElementById('csv-import-status');
+  statusEl.style.color = '#888';
+  statusEl.textContent = '読み込み中...';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let text = e.target.result;
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+      if (lines.length < 2) { statusEl.style.color='#c0392b'; statusEl.textContent='データが見つかりませんでした'; return; }
+
+      const header = parseCSVLine(lines[0]);
+      const dataRows = lines.slice(1).map(l => parseCSVLine(l));
+
+      let type = '';
+      // 日本語ヘッダー・英語ヘッダー両対応
+      const isVisits   = header.includes('訪問日時') || (header.includes('datetime') && header.includes('address'));
+      const isRewards  = header.includes('報酬発生日') || (header.includes('amount') && header.includes('status') && header.includes('date') && !header.includes('datetime'));
+      const isAdvances = header.includes('請求日') || (header.includes('amount') && header.includes('date') && !header.includes('status') && !header.includes('datetime'));
+      if (isVisits) type = 'visits';
+      else if (isRewards) type = 'rewards';
+      else if (isAdvances) type = 'advances';
+
+      if (!type) { statusEl.style.color='#c0392b'; statusEl.textContent='対応していないCSV形式です'; return; }
+
+      // 日本語→英語キーのマッピング
+      const colMap = {
+        '管理ID':'id', 'カスタムID':'customId', '郵便番号':'zipcode',
+        '訪問日時':'datetime', 'お客様名':'name', '住所':'address',
+        '電話番号':'tel', 'メモ':'memo', '報酬金額':'reward',
+        'ステータス(0=未訪問/1=訪問済)':'status',
+        '報酬発生日':'date', 'お客様名・件名':'name',
+        'ステータス(0=未確定/1=確定済)':'status',
+        '請求日':'date', '請求金額':'amount',
+        // 英語キーはそのまま
+        'id':'id','customId':'customId','zipcode':'zipcode','datetime':'datetime',
+        'name':'name','address':'address','tel':'tel','memo':'memo',
+        'reward':'reward','status':'status','date':'date','amount':'amount'
+      };
+      const normalizedHeader = header.map(h => colMap[h.trim()] || h.trim());
+
+      const getVal = (row, col) => {
+        const idx = normalizedHeader.indexOf(col);
+        return idx >= 0 ? (row[idx] || '') : '';
+      };
+
+      let added = 0, updated = 0;
+
+      if (type === 'visits') {
+        dataRows.forEach(row => {
+          const id = getVal(row, 'id');
+          if (!id) return;
+          const obj = {
+            id, customId: getVal(row,'customId'), zipcode: getVal(row,'zipcode'),
+            datetime: getVal(row,'datetime'), name: getVal(row,'name'),
+            address: getVal(row,'address'), tel: getVal(row,'tel'),
+            memo: getVal(row,'memo'),
+            reward: getVal(row,'reward')!==''?parseInt(getVal(row,'reward')):null,
+            status: parseInt(getVal(row,'status'))||0,
+            photos: []
+          };
+          const idx = visits.findIndex(v=>v.id===id);
+          if (idx>=0) { visits[idx]={...visits[idx],...obj}; updated++; }
+          else { visits.push(obj); added++; }
+        });
+      } else if (type === 'rewards') {
+        dataRows.forEach(row => {
+          const id = getVal(row, 'id');
+          if (!id) return;
+          const obj = {
+            id, date: getVal(row,'date'), name: getVal(row,'name'),
+            amount: parseInt(getVal(row,'amount'))||0,
+            status: parseInt(getVal(row,'status'))!=null?parseInt(getVal(row,'status')):1,
+            memo: getVal(row,'memo')
+          };
+          const idx = rewards.findIndex(r=>r.id===id);
+          if (idx>=0) { rewards[idx]={...rewards[idx],...obj}; updated++; }
+          else { rewards.push(obj); added++; }
+        });
+      } else if (type === 'advances') {
+        dataRows.forEach(row => {
+          const id = getVal(row, 'id');
+          if (!id) return;
+          const obj = {
+            id, date: getVal(row,'date'),
+            amount: parseInt(getVal(row,'amount'))||0,
+            memo: getVal(row,'memo')
+          };
+          const idx = advances.findIndex(a=>a.id===id);
+          if (idx>=0) { advances[idx]={...advances[idx],...obj}; updated++; }
+          else { advances.push(obj); added++; }
+        });
+      }
+
+      saveData();
+      renderList();
+      updateStats();
+      statusEl.style.color = '#27ae60';
+      statusEl.textContent = `インポート完了：新規 ${added}件 追加、${updated}件 更新`;
+    } catch(err) {
+      statusEl.style.color = '#c0392b';
+      statusEl.textContent = '読み込みに失敗しました（ファイル形式を確認してください）';
+    }
+  };
+  reader.onerror = () => { statusEl.style.color='#c0392b'; statusEl.textContent='ファイルの読み込みに失敗しました'; };
+  // Shift_JIS判定（Excelで保存したCSVに対応）
+  const sniff = new FileReader();
+  sniff.onload = ev => {
+    const buf = new Uint8Array(ev.target.result);
+    const isUtf8Bom = buf[0]===0xEF && buf[1]===0xBB && buf[2]===0xBF;
+    const looksShiftJis = !isUtf8Bom && ((buf[0]>=0x82&&buf[0]<=0x9F)||(buf[0]>=0xE0&&buf[0]<=0xFC));
+    reader.readAsText(file, looksShiftJis ? 'Shift_JIS' : 'UTF-8');
+  };
+  sniff.readAsArrayBuffer(file.slice(0,4));
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '', inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuote) {
+      if (ch === '"' && line[i+1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuote = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuote = true; }
+      else if (ch === ',') { result.push(current); current = ''; }
+      else { current += ch; }
+    }
+  }
+  result.push(current);
+  return result;
 }
 
 // ===== 検索 =====
@@ -1322,6 +2064,7 @@ function init(){
     document.getElementById('pwa-hint').style.display='block';
   updateMonthLabel();
   updateStats();
+  updateTrialBanner();
   renderList();
 }
 init();
