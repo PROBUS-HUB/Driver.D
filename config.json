@@ -1,12 +1,12 @@
 {
   "version": 2,
-  "updatedAt": "2026-06-08T08:20:15.099Z",
+  "updatedAt": "2026-06-12T14:59:56.424Z",
   "users": [
     {
-      "uid": "tani",
-      "name": "タニ",
+      "uid": "123",
+      "name": "tani",
       "password": "tani1212",
-      "expiryDate": "2026-08-12",
+      "expiryDate": "2026-07-12",
       "memo": ""
     }
   ]
